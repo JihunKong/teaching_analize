@@ -6,7 +6,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     gcc \
+    g++ \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --upgrade pip
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
