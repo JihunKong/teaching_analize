@@ -30,4 +30,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8001}/health || exit 1
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# PORT 환경변수를 사용하거나 기본값 8001 사용
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}
