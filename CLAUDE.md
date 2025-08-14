@@ -8,11 +8,26 @@ AIBOA (AI-Based Observation and Analysis) is a modular classroom teaching analys
 
 ## Current Status (Updated: 2025-08-15)
 
-✅ **Successfully Deployed on Railway:**
+✅ **Successfully Deployed on Railway with Full Features:**
 - **Transcription Service**: https://teachinganalize-production.up.railway.app (Port 8080)
+  - ✅ Whisper API integration for speech-to-text
+  - ✅ YouTube URL support with caption extraction
+  - ✅ Multiple export formats (JSON, SRT, TXT)
+  - ✅ Async job processing with background tasks
+  - ✅ API authentication with X-API-Key header
+  
 - **Analysis Service**: https://amusedfriendship-production.up.railway.app (Port 8080)
+  - ✅ CBIL 7-level classification system implemented
+  - ✅ Solar-mini LLM integration for Korean text analysis
+  - ✅ Integration with Transcription Service
+  - ✅ Statistics dashboard endpoint
+  - ✅ Report generation endpoint (placeholder)
 
-Both services are running with basic health check endpoints. Ready for feature implementation.
+⚠️ **Pending Setup:**
+- PostgreSQL database on Railway (currently using SQLite)
+- Redis for Celery async task queue
+- Full PDF report generation with charts
+- End-to-end testing with real data
 
 ## System Architecture
 
@@ -147,9 +162,36 @@ All API endpoints require API key authentication via `X-API-Key` header.
 
 ## Important Notes
 
-- This is currently a specification/planning repository with comprehensive documentation
-- Implementation should follow the modular architecture described in README.md
-- Each service should be independently deployable
+- ✅ Both services are now fully implemented and deployed on Railway
+- ✅ Modular architecture allows independent deployment and scaling
+- ✅ Each service has comprehensive error handling and logging
+- ⚠️ Currently using SQLite - migrate to PostgreSQL for production
+- ⚠️ Redis setup needed for proper async task queuing
 - Use Railway's environment variables for all sensitive configurations
-- Implement proper error handling and logging for production deployment
 - Follow the storage optimization strategy (30-day retention, gzip compression)
+
+## Testing the Services
+
+### Test Transcription Service
+```bash
+# Health check
+curl https://teachinganalize-production.up.railway.app/health
+
+# Upload file for transcription (requires API key)
+curl -X POST https://teachinganalize-production.up.railway.app/api/transcribe/upload \
+  -H "X-API-Key: test-api-key" \
+  -F "file=@sample.mp3" \
+  -F "language=ko"
+```
+
+### Test Analysis Service
+```bash
+# Health check
+curl https://amusedfriendship-production.up.railway.app/health
+
+# Analyze text (requires API key)
+curl -X POST https://amusedfriendship-production.up.railway.app/api/analyze/text \
+  -H "X-API-Key: test-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "오늘 배운 내용을 설명해보세요. 왜 이것이 중요한가요?"}'
+```
