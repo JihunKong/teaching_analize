@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install minimal requirements
+RUN pip install fastapi uvicorn
+
+# Copy test app
+COPY test_app.py .
+
+# Use Railway PORT
+CMD python test_app.py
