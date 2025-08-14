@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AIBOA (AI-Based Observation and Analysis) is a modular classroom teaching analysis platform that uses AI to analyze teaching sessions and support teacher improvement. The system is designed for deployment on Railway platform with microservice architecture.
 
+## Current Status (Updated: 2025-08-15)
+
+✅ **Successfully Deployed on Railway:**
+- **Transcription Service**: https://teachinganalize-production.up.railway.app (Port 8080)
+- **Analysis Service**: https://amusedfriendship-production.up.railway.app (Port 8080)
+
+Both services are running with basic health check endpoints. Ready for feature implementation.
+
 ## System Architecture
 
 The project follows a modular microservice architecture with two main independent services:
@@ -36,17 +44,27 @@ npm install -g @railway/cli
 
 # Deploy services
 railway login
-railway init
-railway up
+railway link  # Connect to existing project
 
-# Run database migrations
-railway run python manage.py migrate
+# Deploy from service directories
+cd services/transcription && railway up --service teaching_analize --detach
+cd services/analysis && railway up --service amused_friendship --detach
 
-# Set environment variables
-railway variables set OPENAI_API_KEY=xxx
-railway variables set UPSTAGE_API_KEY=xxx
-railway variables set SOLAR_API_KEY=xxx
+# Check deployment status
+railway status
+railway logs --service teaching_analize
+railway logs --service amused_friendship
+
+# Environment variables (already set in Railway dashboard)
+# OPENAI_API_KEY, UPSTAGE_API_KEY, SOLAR_API_KEY
 ```
+
+### Railway Deployment Lessons Learned
+- ⚠️ Never use TCP Proxy for HTTP services (causes 502 errors)
+- ⚠️ Don't override PORT environment variable (Railway assigns it automatically)
+- ⚠️ Service names should use underscores, not hyphens
+- ⚠️ Root Directory must match service structure (e.g., services/transcription)
+- ⚠️ Target Port in Networking settings must match actual app port
 
 ### Local Development (if implementing)
 ```bash
