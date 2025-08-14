@@ -20,15 +20,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/
+COPY start.sh .
+
+# Make start script executable
+RUN chmod +x start.sh
+
+# Create volume mount points
+RUN mkdir -p /data/analyses /data/temp
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8001}/health || exit 1
-
-# Run the application
-# PORT 환경변수를 사용하거나 기본값 8001 사용
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}
+# Run the application using start script
+CMD ["sh", "start.sh"]
