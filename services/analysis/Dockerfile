@@ -2,18 +2,27 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install minimal dependencies
-RUN pip install --no-cache-dir fastapi==0.104.1 uvicorn[standard]==0.24.0
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy simple test app
-COPY simple_main.py main.py
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Create a simple start script that uses PORT as-is
+# Create storage directories
+RUN mkdir -p /data/analysis /data/reports
+
+# Create start script that uses PORT as-is
 RUN echo '#!/bin/sh\n\
-echo "Starting server on PORT: $PORT"\n\
+echo "Starting Analysis Service on PORT: $PORT"\n\
 exec uvicorn main:app --host 0.0.0.0 --port $PORT' > start.sh && chmod +x start.sh
 
 # Run using shell to properly expand PORT variable
