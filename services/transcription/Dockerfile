@@ -2,16 +2,20 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install complete system dependencies for production
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     gcc \
     g++ \
+    python3-dev \
+    libpq-dev \
+    build-essential \
     libmagic1 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Upgrade pip and install build tools
+RUN pip install --upgrade pip wheel setuptools
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

@@ -1,0 +1,15 @@
+# Railway Configuration - Transcription Service
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+numReplicas = 1
+
+[environment]
+PYTHONUNBUFFERED = "1"
+SERVICE_NAME = "transcription"
