@@ -28,7 +28,7 @@ pip install -r requirements.txt
 # Set environment variables
 echo "Setting environment variables..."
 export TRANSCRIPTION_API_URL="https://teachinganalize-production.up.railway.app"
-export ANALYSIS_API_URL="https://amusedfriendship-production.up.railway.app"
+export ANALYSIS_API_URL="https://teachinganalize-production.up.railway.app"
 export API_KEY="test-api-key"
 
 # Display configuration
