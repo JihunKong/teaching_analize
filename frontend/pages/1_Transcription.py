@@ -11,7 +11,7 @@ import json
 
 st.set_page_config(
     page_title="Transcription - AIBOA",
-    page_icon="📝",
+    page_icon="🎯",
     layout="wide"
 )
 
@@ -20,7 +20,7 @@ if "api_client" not in st.session_state:
     st.session_state.api_client = AIBOAClient()
 
 # Page Header
-st.title("📝 Transcription Service")
+st.title("🎯 Transcription Service")
 st.markdown("Convert video/audio files or YouTube videos to text using AI-powered speech recognition")
 
 # Create tabs for different input methods

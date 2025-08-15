@@ -11,12 +11,12 @@ from utils.api_client import get_cached_statistics
 
 st.set_page_config(
     page_title="Statistics - AIBOA",
-    page_icon="📊",
+    page_icon="🎯",
     layout="wide"
 )
 
 # Page Header
-st.title("📊 Platform Statistics")
+st.title("🎯 Platform Statistics")
 st.markdown("Real-time metrics and analytics for the AIBOA platform")
 
 # Get statistics from API

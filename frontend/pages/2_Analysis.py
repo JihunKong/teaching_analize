@@ -12,7 +12,7 @@ import pandas as pd
 
 st.set_page_config(
     page_title="Analysis - AIBOA",
-    page_icon="🔍",
+    page_icon="🎯",
     layout="wide"
 )
 
@@ -21,7 +21,7 @@ if "api_client" not in st.session_state:
     st.session_state.api_client = AIBOAClient()
 
 # Page Header
-st.title("🔍 CBIL Analysis Service")
+st.title("🎯 CBIL Analysis Service")
 st.markdown("Analyze teaching content using the 7-level Cognitive Burden of Instructional Language classification")
 
 # CBIL Level Information

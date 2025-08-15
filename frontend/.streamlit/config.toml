@@ -17,25 +17,32 @@ textColor = "#262730"
 font = "sans serif"
 
 [server]
+# Railway-specific server configuration
+port = 8501
+address = "0.0.0.0"
+baseUrlPath = ""
+
 # Max size for file uploads (in MB)
 maxUploadSize = 200
 
 # Max size for message payloads (in MB)
 maxMessageSize = 200
 
-# Enables CORS protection (must be true when enableXsrfProtection is true)
-enableCORS = true
+# Disable CORS and XSRF for Railway deployment
+enableCORS = false
+enableXsrfProtection = false
 
-# Enables XSRF protection
-enableXsrfProtection = true
-
-# Enables support for websocket compression
-enableWebsocketCompression = true
+# Disable websocket compression for Railway compatibility
+enableWebsocketCompression = false
 
 # Run in headless mode for server deployment
 headless = true
 
 [browser]
+# Railway domain configuration
+serverAddress = "aiboa-frontend-production.up.railway.app"
+serverPort = 443
+
 # Whether to send usage statistics to Streamlit
 gatherUsageStats = false
 
