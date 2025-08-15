@@ -255,17 +255,21 @@ async def process_youtube(job_id: str, url: str, language: str):
             logger.info(f"Starting real YouTube processing for job {job_id}")
             
             # Extract captions or download audio
-            result = await youtube_handler.get_transcript(url, language)
+            captions = youtube_handler.get_captions(url, language)
             
-            if result:
+            if captions:
                 job.status = "completed"
                 job.completed_at = datetime.now()
-                job.result = result
+                job.result = {
+                    "text": captions,
+                    "language": language,
+                    "source": "youtube_captions"
+                }
                 logger.info(f"YouTube processing completed for job {job_id}")
             else:
                 # Fallback to downloading and transcribing
                 if whisper_client:
-                    audio_path = await youtube_handler.download_audio(url)
+                    audio_path, info = youtube_handler.download_audio(url)
                     result = whisper_client.transcribe(audio_path, language=language)
                     
                     # Clean up
