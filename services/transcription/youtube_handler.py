@@ -4,6 +4,8 @@ import tempfile
 from typing import Optional, Dict, Any
 import yt_dlp
 from pathlib import Path
+import re
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,7 @@ class YouTubeHandler:
     def __init__(self, download_dir: str = "/tmp/youtube"):
         self.download_dir = download_dir
         os.makedirs(download_dir, exist_ok=True)
+        self.youtube_api_key = os.getenv("YOUTUBE_API_KEY", "")
         
     def download_audio(self, url: str) -> tuple[str, Dict[str, Any]]:
         """
@@ -69,6 +72,89 @@ class YouTubeHandler:
             logger.error(f"Failed to download YouTube audio: {str(e)}")
             raise
     
+    def _extract_video_id(self, url: str) -> Optional[str]:
+        """Extract video ID from YouTube URL"""
+        patterns = [
+            r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+            r'(?:embed\/)([0-9A-Za-z_-]{11})',
+            r'(?:watch\?v=)([0-9A-Za-z_-]{11})',
+            r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
+        return None
+    
+    def get_captions_via_api(self, url: str, language: str = "ko") -> Optional[str]:
+        """
+        Get captions using YouTube Data API v3
+        
+        Args:
+            url: YouTube video URL
+            language: Language code for captions
+            
+        Returns:
+            Caption text if available, None otherwise
+        """
+        if not self.youtube_api_key:
+            logger.info("YouTube API key not configured, falling back to yt-dlp")
+            return None
+        
+        video_id = self._extract_video_id(url)
+        if not video_id:
+            logger.error(f"Could not extract video ID from URL: {url}")
+            return None
+        
+        try:
+            # Get caption list using YouTube API
+            api_url = "https://www.googleapis.com/youtube/v3/captions"
+            params = {
+                "part": "snippet",
+                "videoId": video_id,
+                "key": self.youtube_api_key
+            }
+            
+            response = requests.get(api_url, params=params)
+            
+            if response.status_code != 200:
+                logger.error(f"YouTube API error: {response.status_code} - {response.text}")
+                return None
+            
+            data = response.json()
+            captions = data.get("items", [])
+            
+            # Find caption in requested language
+            caption_id = None
+            for caption in captions:
+                snippet = caption.get("snippet", {})
+                if snippet.get("language") == language:
+                    caption_id = caption.get("id")
+                    break
+            
+            # Fallback to English if requested language not found
+            if not caption_id and language != "en":
+                for caption in captions:
+                    snippet = caption.get("snippet", {})
+                    if snippet.get("language") == "en":
+                        caption_id = caption.get("id")
+                        logger.info(f"Captions in {language} not found, using English")
+                        break
+            
+            if caption_id:
+                # Note: Downloading captions requires OAuth, so we can't directly download
+                # We know captions exist, so we can try yt-dlp with this knowledge
+                logger.info(f"Captions found via API for video {video_id}, using yt-dlp to download")
+                return None  # Let yt-dlp handle the download
+            
+            logger.info(f"No captions found via API for video {video_id}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"YouTube API error: {str(e)}")
+            return None
+    
     def get_captions(self, url: str, language: str = "ko") -> Optional[str]:
         """
         Try to get captions/subtitles from YouTube video
@@ -80,6 +166,10 @@ class YouTubeHandler:
         Returns:
             Caption text if available, None otherwise
         """
+        # First try YouTube API if available
+        if self.youtube_api_key:
+            logger.info("Checking captions availability via YouTube API")
+            self.get_captions_via_api(url, language)
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,

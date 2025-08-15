@@ -19,10 +19,12 @@ from config import settings
 try:
     from .whisper_client import WhisperClient
     from .youtube_handler import YouTubeHandler
+    from .youtube_transcript import get_youtube_transcript_with_fallback
 except ImportError:
     # Fallback if modules not found
     WhisperClient = None
     YouTubeHandler = None
+    get_youtube_transcript_with_fallback = None
 
 router = APIRouter(prefix="/api/transcribe", tags=["transcription"])
 logger = logging.getLogger(__name__)
@@ -250,9 +252,29 @@ async def process_youtube(job_id: str, url: str, language: str):
     job = transcription_jobs[job_id]
     
     try:
+        # First try youtube-transcript-api if available
+        if get_youtube_transcript_with_fallback:
+            logger.info(f"Trying youtube-transcript-api for job {job_id}")
+            transcript_result = get_youtube_transcript_with_fallback(url, language)
+            
+            if transcript_result:
+                job.status = "completed"
+                job.completed_at = datetime.now()
+                job.result = {
+                    "text": transcript_result["text"],
+                    "language": transcript_result.get("language", language),
+                    "segments": transcript_result.get("segments", []),
+                    "source": "youtube_transcript_api",
+                    "is_generated": transcript_result.get("is_generated", False),
+                    "video_id": transcript_result.get("video_id", "")
+                }
+                logger.info(f"YouTube transcript extracted successfully for job {job_id}")
+                return
+        
+        # Fallback to yt-dlp if youtube-transcript-api fails
         if youtube_handler:
             # Real YouTube processing
-            logger.info(f"Starting real YouTube processing for job {job_id}")
+            logger.info(f"Falling back to yt-dlp for job {job_id}")
             
             # Extract captions or download audio
             captions = youtube_handler.get_captions(url, language)
@@ -263,9 +285,9 @@ async def process_youtube(job_id: str, url: str, language: str):
                 job.result = {
                     "text": captions,
                     "language": language,
-                    "source": "youtube_captions"
+                    "source": "youtube_captions_ytdlp"
                 }
-                logger.info(f"YouTube processing completed for job {job_id}")
+                logger.info(f"YouTube processing completed with yt-dlp for job {job_id}")
             else:
                 # Fallback to downloading and transcribing
                 if whisper_client:
