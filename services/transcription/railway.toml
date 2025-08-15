@@ -1,9 +1,9 @@
 # Railway Configuration - Transcription Service
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.prod"
+builder = "NIXPACKS"
 
 [deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
