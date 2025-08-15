@@ -1,7 +1,7 @@
 # Railway Configuration - Analysis Service
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.prod"
+dockerfilePath = "Dockerfile.latest"
 
 [deploy]
 healthcheckPath = "/health"

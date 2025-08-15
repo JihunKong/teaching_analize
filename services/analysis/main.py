@@ -9,10 +9,11 @@ async def root():
     return {
         "status": "healthy", 
         "service": "Analysis Service",
-        "version": "MVP-v2-HOTFIX",
+        "version": "MVP-v2-HOTFIX-LATEST",
         "timestamp": datetime.now().isoformat(),
         "port": int(os.environ.get('PORT', 8080)),
-        "deployed": "2025-08-15"
+        "deployed": "2025-08-15-FORCE-REBUILD",
+        "build_id": "latest-cache-bust"
     }
 
 @app.get("/health")
