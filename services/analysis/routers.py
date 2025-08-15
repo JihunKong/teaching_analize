@@ -75,11 +75,21 @@ async def analyze_text(request: AnalysisRequest, x_api_key: str = Header(None)):
             # Real CBIL analysis
             logger.info(f"Starting real CBIL analysis for {analysis_id}")
             
-            # Segment text into utterances
-            utterances = cbil_analyzer.segment_text(request.text)
-            
             # Perform rule-based analysis first
-            base_analysis = cbil_analyzer.analyze_text(request.text)
+            base_analysis = cbil_analyzer.analyze_utterance(request.text, request.metadata)
+            
+            # Initialize cbil_scores
+            cbil_level = base_analysis.get("cbil_level", 3)
+            confidence = base_analysis.get("confidence", 0.5)
+            
+            # Create score distribution based on analyzed level
+            cbil_scores = {i: 0.0 for i in range(1, 8)}
+            cbil_scores[cbil_level] = confidence
+            # Add some distribution to neighboring levels
+            if cbil_level > 1:
+                cbil_scores[cbil_level - 1] = (1 - confidence) * 0.3
+            if cbil_level < 7:
+                cbil_scores[cbil_level + 1] = (1 - confidence) * 0.3
             
             # Enhance with LLM if available
             try:
@@ -87,22 +97,30 @@ async def analyze_text(request: AnalysisRequest, x_api_key: str = Header(None)):
                 
                 # Merge results
                 if llm_result.get("enhanced"):
-                    cbil_scores = llm_result.get("cbil_scores", base_analysis["cbil_scores"])
+                    cbil_scores = llm_result.get("cbil_scores", cbil_scores)
                     enhanced = True
                 else:
-                    cbil_scores = base_analysis["cbil_scores"]
                     enhanced = False
                     
             except Exception as e:
                 logger.error(f"LLM enhancement failed: {str(e)}")
-                cbil_scores = base_analysis["cbil_scores"]
                 enhanced = False
             
             # Generate recommendations based on analysis
-            recommendations = cbil_analyzer.generate_recommendations(cbil_scores)
+            recommendations = []
+            if cbil_scores.get(7, 0) < 0.1:
+                recommendations.append("창의적 적용 질문을 더 추가하세요")
+            if cbil_scores.get(6, 0) < 0.1:
+                recommendations.append("평가적 판단을 요구하는 질문을 포함하세요")
+            if cbil_scores.get(1, 0) + cbil_scores.get(2, 0) > 0.5:
+                recommendations.append("고차원적 사고를 요구하는 질문 비중을 늘리세요")
             
             # Calculate overall score
-            overall_score = cbil_analyzer.calculate_overall_score(cbil_scores)
+            total_weight = sum(cbil_scores.values())
+            if total_weight > 0:
+                overall_score = sum(level * score for level, score in cbil_scores.items()) / total_weight
+            else:
+                overall_score = 3.0
             
         else:
             # Mock analysis
