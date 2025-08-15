@@ -1,4 +1,6 @@
-# # AIBOA (AI-Based Observation and Analysis) 수업 분석 시스템
+# AIBOA - AI-Based Observation and Analysis Platform
+
+🎓 교사 수업 분석을 위한 AI 기반 플랫폼
 
 ## 📋 프로젝트 개요
 
@@ -90,7 +92,14 @@ GET  /api/statistics            # 통계 대시보드
 - 실시간 진행 모니터링
 - 히스토리 및 검색
 
-## 🚀 Railway 배포 가이드
+## 🚀 현재 배포 상태
+
+✅ **Production 배포 완료**
+- **URL**: https://teachinganalize-production.up.railway.app
+- **API Docs**: https://teachinganalize-production.up.railway.app/docs
+- **상태**: 모든 서비스 정상 작동
+
+## 🔧 Railway 배포 가이드
 
 ### 1. Railway 프로젝트 설정
 
@@ -101,8 +110,8 @@ npm install -g @railway/cli
 # 로그인
 railway login
 
-# 새 프로젝트 생성
-railway init
+# GitHub 레포지토리 연결
+railway link
 ```
 
 ### 2. 서비스별 배포
@@ -300,21 +309,29 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
 
 ## 📝 API 사용 예시
 
-### 영상 전사 요청
+### YouTube 비디오 전사
 ```bash
-curl -X POST https://transcription.railway.app/api/transcribe/upload \
+curl -X POST https://teachinganalize-production.up.railway.app/api/transcribe/youtube \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"youtube_url": "https://youtube.com/watch?v=xxx", "language": "ko"}'
+```
+
+### 파일 업로드 전사
+```bash
+curl -X POST https://teachinganalize-production.up.railway.app/api/transcribe/upload \
   -H "X-API-Key: your-api-key" \
   -F "file=@lesson.mp4" \
   -F "language=ko"
 ```
 
-### 분석 요청
+### 텍스트 분석
 ```bash
-curl -X POST https://analysis.railway.app/api/analyze/text \
+curl -X POST https://teachinganalize-production.up.railway.app/api/analyze/text \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "수업 전사 텍스트...",
+    "text": "오늘 배운 내용을 설명해보세요. 왜 이것이 중요한가요?",
     "metadata": {
       "subject": "국어",
       "grade": 10
@@ -363,7 +380,21 @@ jobs:
 
 ## 📚 문서 및 지원
 
-- API 문서: https://your-app.railway.app/docs
-- 사용자 가이드: /docs/user-guide.md
-- 문제 해결: /docs/troubleshooting.md
-- 지원: support@aiboa.edu
+- **API 문서**: https://teachinganalize-production.up.railway.app/docs
+- **GitHub**: https://github.com/JihunKong/teaching_analize
+- **Issues**: https://github.com/JihunKong/teaching_analize/issues
+
+## 🧪 테스트
+
+API 테스트 스크립트 실행:
+```bash
+./test_api.sh
+```
+
+## 📄 라이선스
+
+MIT License
+
+## 👥 기여
+
+기여를 환영합니다! Pull Request를 보내주세요.
