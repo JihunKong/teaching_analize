@@ -12,7 +12,7 @@ async def root():
         "version": "MVP-v2-HOTFIX-LATEST",
         "timestamp": datetime.now().isoformat(),
         "port": int(os.environ.get('PORT', 8080)),
-        "deployed": "2025-08-15-FORCE-REBUILD",
+        "deployed": "2025-08-15-131759",
         "build_id": "latest-cache-bust"
     }
 

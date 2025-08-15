@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 # Cache busting layer - forces rebuild
-ARG CACHEBUST=1
+ARG CACHEBUST=1755231479
 RUN echo "Cache bust: ${CACHEBUST}"
 
 # Add deployment timestamp
