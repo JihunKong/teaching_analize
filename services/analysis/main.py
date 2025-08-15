@@ -1,29 +1,32 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 from datetime import datetime
 import os
 
-app = FastAPI(title="Analysis Service MVP")
-
-class HealthResponse(BaseModel):
-    status: str = "healthy"
-    service: str = "Analysis Service"
-    version: str = "MVP"
-    timestamp: datetime = datetime.now()
-    port: int = int(os.environ.get('PORT', 8080))
+app = FastAPI(title="Analysis Service MVP v2")
 
 @app.get("/")
 async def root():
-    return HealthResponse()
+    return {
+        "status": "healthy", 
+        "service": "Analysis Service",
+        "version": "MVP-v2-HOTFIX",
+        "timestamp": datetime.now().isoformat(),
+        "port": int(os.environ.get('PORT', 8080)),
+        "deployed": "2025-08-15"
+    }
 
 @app.get("/health")
 async def health():
-    return HealthResponse()
+    return {
+        "status": "healthy",
+        "version": "MVP-v2"
+    }
 
 @app.get("/api/status")
 async def status():
     return {
         "status": "operational",
         "features": "minimal",
-        "deployment": "Railway MVP"
+        "deployment": "Railway MVP v2",
+        "build": "HOTFIX-2025-08-15"
     }
