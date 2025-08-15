@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="AIBOA Teaching Analysis - FIXED",
-    description="Railway deployment with Nixpacks auto-detection",
-    version="2.0.0-FIXED"
+    title="AIBOA Teaching Analysis - Production",
+    description="Successfully deployed on Railway",
+    version="3.0.0-PRODUCTION"
 )
 
 # Log startup information
@@ -40,8 +40,8 @@ async def root():
         content={
             "service": "AIBOA Teaching Analysis",
             "status": "running",
-            "message": "FIXED: Nixpacks auto-detection working!",
-            "deployment": "2025-08-15-FIXED",
+            "message": "SUCCESS: FastAPI deployed on Railway!",
+            "deployment": "2025-08-15-PRODUCTION",
             "timestamp": datetime.now().isoformat(),
             "port": os.getenv("PORT", "8000"),
             "environment": {
