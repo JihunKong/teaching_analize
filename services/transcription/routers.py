@@ -31,6 +31,47 @@ except ImportError:
 router = APIRouter(prefix="/api/transcribe", tags=["transcription"])
 logger = logging.getLogger(__name__)
 
+@router.get("/debug-youtube")
+async def debug_youtube_access():
+    """YouTube 접근 상태 진단 (교육 목적)"""
+    try:
+        # 진단 스크립트 실행
+        import subprocess
+        import os
+        
+        script_path = os.path.join(os.path.dirname(__file__), "debug_youtube.py")
+        
+        if not os.path.exists(script_path):
+            return {
+                "status": "error",
+                "message": "Debug script not found",
+                "script_path": script_path
+            }
+        
+        # Python 스크립트 실행
+        result = subprocess.run([
+            "python3", script_path
+        ], capture_output=True, text=True, timeout=60)
+        
+        return {
+            "status": "completed",
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "return_code": result.returncode,
+            "message": "YouTube 접근 진단 완료"
+        }
+        
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "timeout",
+            "message": "진단 스크립트 실행 시간 초과 (60초)"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"진단 스크립트 실행 실패: {str(e)}"
+        }
+
 # Initialize clients (will be None if API keys not configured)
 whisper_client = None
 youtube_handler = None
