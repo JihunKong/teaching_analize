@@ -1,7 +1,7 @@
 # Railway Configuration - Transcription Service
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "Dockerfile.prod"
 
 [deploy]
 healthcheckPath = "/health"
