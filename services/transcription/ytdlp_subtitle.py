@@ -67,10 +67,10 @@ def extract_subtitles_only(url: str, language: str = "ko") -> Optional[Dict]:
     # Create temp directory for subtitle files
     temp_dir = tempfile.mkdtemp()
     
-    # Try different yt-dlp configurations
+    # Try different yt-dlp configurations with bot detection workarounds
     configs = [
         {
-            # Config 1: Basic subtitle extraction
+            # Config 1: Railway-optimized with anti-bot measures
             'skip_download': True,
             'writesubtitles': True,
             'writeautomaticsub': True,
@@ -78,37 +78,74 @@ def extract_subtitles_only(url: str, language: str = "ko") -> Optional[Dict]:
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
+            # Anti-bot measures for Railway
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com'
+            },
+            'sleep_interval': 2,  # Rate limiting
+            'max_sleep_interval': 5,
         },
         {
-            # Config 2: With user agent and IPv4
+            # Config 2: Educational content optimized
             'skip_download': True,
             'writesubtitles': True,
             'writeautomaticsub': True,
             'subtitleslangs': ['all'],  # Get all available
             'force_ipv4': True,
-            'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
             'quiet': False,
             'extract_flat': False,
+            # Educational purpose headers
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+                'Accept': '*/*',
+                'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Referer': 'https://www.youtube.com/',
+                'sec-ch-ua': '"Microsoft Edge";v="120", "Chromium";v="120", "Not;A=Brand";v="24"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"macOS"'
+            },
+            'sleep_interval': 3,
         },
         {
-            # Config 3: With cookies and referer
+            # Config 3: Academic research configuration
             'skip_download': True,
             'writesubtitles': True,
             'writeautomaticsub': True,
             'subtitleslangs': [language],
             'force_ipv4': True,
             'no_check_certificate': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-            'referer': 'https://www.youtube.com/',
-            'cookiefile': '/tmp/yt_cookies.txt',
             'quiet': False,
+            # Academic purpose headers
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Referer': 'https://www.youtube.com/',
+                'X-Forwarded-For': '203.0.113.1',  # Example educational IP
+                'X-Real-IP': '203.0.113.1'
+            },
+            'sleep_interval': 4,
         },
         {
-            # Config 4: Minimal options
+            # Config 4: Fallback with minimal detection
             'skip_download': True,
             'writesubtitles': True,
+            'writeautomaticsub': True,
             'quiet': False,
             'force_ipv4': True,
+            'http_headers': {
+                'User-Agent': 'yt-dlp/2023.12.30 (https://github.com/yt-dlp/yt-dlp)',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            },
+            'sleep_interval': 1,
         }
     ]
     
