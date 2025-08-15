@@ -3,7 +3,22 @@ import json
 from typing import Dict, Any, List, Optional
 import aiohttp
 import asyncio
-from config import settings
+import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+try:
+    from config import settings
+except ImportError:
+    # Fallback settings if config not found
+    class Settings:
+        SOLAR_API_KEY = os.getenv("SOLAR_API_KEY", "")
+        UPSTAGE_API_KEY = os.getenv("UPSTAGE_API_KEY", "")
+        LLM_TEMPERATURE = 0.3
+        LLM_MAX_TOKENS = 1000
+    settings = Settings()
 
 logger = logging.getLogger(__name__)
 
