@@ -29,7 +29,7 @@
 6. **입력**
    ```
    변수명: YOUTUBE_API_KEY
-   값: ***REMOVED***
+   값: AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw
    ```
 
 7. **저장**

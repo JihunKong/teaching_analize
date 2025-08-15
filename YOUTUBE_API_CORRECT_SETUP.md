@@ -55,10 +55,10 @@
 ### 3단계: Railway 환경 변수 설정
 ```bash
 # CLI 방법
-railway variables set YOUTUBE_API_KEY=***REMOVED***
+railway variables set YOUTUBE_API_KEY=AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw
 
 # 또는 Dashboard에서
-YOUTUBE_API_KEY=***REMOVED***
+YOUTUBE_API_KEY=AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw
 ```
 
 ## 🧪 작동 테스트
@@ -66,7 +66,7 @@ YOUTUBE_API_KEY=***REMOVED***
 ### API 키 테스트 (터미널):
 ```bash
 # YouTube API 직접 테스트
-curl "https://www.googleapis.com/youtube/v3/videos?id=dQw4w9WgXcQ&key=***REMOVED***&part=snippet"
+curl "https://www.googleapis.com/youtube/v3/videos?id=dQw4w9WgXcQ&key=AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw&part=snippet"
 
 # 성공 시: JSON 데이터 반환
 # 실패 시: 오류 메시지 확인
@@ -115,7 +115,7 @@ curl -X POST https://teachinganalize-production.up.railway.app/api/transcribe/yo
 ## ✅ 체크리스트
 
 - [x] YouTube Data API v3 활성화
-- [x] API 키 생성 (***REMOVED***)
+- [x] API 키 생성 (AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw)
 - [ ] API 키 제한 설정 (선택사항)
 - [ ] Railway 환경 변수 추가
 - [ ] 테스트 완료

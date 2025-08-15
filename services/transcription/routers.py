@@ -20,11 +20,13 @@ try:
     from .whisper_client import WhisperClient
     from .youtube_handler import YouTubeHandler
     from .youtube_transcript import get_youtube_transcript_with_fallback
+    from .ytdlp_subtitle import extract_subtitles_only
 except ImportError:
     # Fallback if modules not found
     WhisperClient = None
     YouTubeHandler = None
     get_youtube_transcript_with_fallback = None
+    extract_subtitles_only = None
 
 router = APIRouter(prefix="/api/transcribe", tags=["transcription"])
 logger = logging.getLogger(__name__)
@@ -248,13 +250,13 @@ async def process_transcription(job_id: str, file_path: str, language: str):
             logger.error(f"Failed to clean up file: {str(e)}")
 
 async def process_youtube(job_id: str, url: str, language: str):
-    """Process YouTube URL with real handler or mock"""
+    """Process YouTube URL with multiple fallback methods"""
     job = transcription_jobs[job_id]
     
     try:
-        # First try youtube-transcript-api if available
+        # Method 1: Try youtube-transcript-api first
         if get_youtube_transcript_with_fallback:
-            logger.info(f"Trying youtube-transcript-api for job {job_id}")
+            logger.info(f"Method 1: Trying youtube-transcript-api for job {job_id}")
             transcript_result = get_youtube_transcript_with_fallback(url, language)
             
             if transcript_result:
@@ -268,13 +270,32 @@ async def process_youtube(job_id: str, url: str, language: str):
                     "is_generated": transcript_result.get("is_generated", False),
                     "video_id": transcript_result.get("video_id", "")
                 }
-                logger.info(f"YouTube transcript extracted successfully for job {job_id}")
+                logger.info(f"YouTube transcript extracted successfully with youtube-transcript-api")
                 return
         
-        # Fallback to yt-dlp if youtube-transcript-api fails
+        # Method 2: Try enhanced yt-dlp subtitle extraction
+        if extract_subtitles_only:
+            logger.info(f"Method 2: Trying enhanced yt-dlp subtitle extraction for job {job_id}")
+            subtitle_result = extract_subtitles_only(url, language)
+            
+            if subtitle_result:
+                job.status = "completed"
+                job.completed_at = datetime.now()
+                job.result = {
+                    "text": subtitle_result["text"],
+                    "language": subtitle_result.get("language", language),
+                    "source": "ytdlp_enhanced_subtitles",
+                    "is_auto_generated": subtitle_result.get("is_auto_generated", False),
+                    "video_id": subtitle_result.get("video_id", ""),
+                    "title": subtitle_result.get("title", "")
+                }
+                logger.info(f"YouTube subtitles extracted successfully with enhanced yt-dlp")
+                return
+        
+        # Method 3: Try original yt-dlp handler
         if youtube_handler:
             # Real YouTube processing
-            logger.info(f"Falling back to yt-dlp for job {job_id}")
+            logger.info(f"Method 3: Trying original yt-dlp handler for job {job_id}")
             
             # Extract captions or download audio
             captions = youtube_handler.get_captions(url, language)
@@ -287,7 +308,7 @@ async def process_youtube(job_id: str, url: str, language: str):
                     "language": language,
                     "source": "youtube_captions_ytdlp"
                 }
-                logger.info(f"YouTube processing completed with yt-dlp for job {job_id}")
+                logger.info(f"YouTube processing completed with original yt-dlp")
             else:
                 # Fallback to downloading and transcribing
                 if whisper_client:
@@ -326,17 +347,28 @@ async def process_youtube(job_id: str, url: str, language: str):
         error_msg = str(e)
         logger.error(f"YouTube processing failed for job {job_id}: {error_msg}")
         
-        # Check if it's a bot protection error
-        if "Sign in to confirm" in error_msg or "bot" in error_msg:
-            # Provide helpful mock data for testing
+        # Check error type and provide appropriate response
+        if any(x in error_msg.lower() for x in ["sign in", "bot", "403", "forbidden"]):
+            # Bot protection or access denied
             job.status = "completed"
             job.completed_at = datetime.now()
             job.result = {
-                "text": "[YouTube 보호 메커니즘 활성화됨]\n\n실제 전사를 위해서는:\n1. YOUTUBE_API_KEY를 Railway에 설정하세요\n2. 또는 OPENAI_API_KEY로 Whisper 전사를 사용하세요\n\n테스트 전사 내용:\n안녕하세요, 오늘은 중요한 수업 내용을 다루겠습니다.\n이 내용을 잘 이해하면 다음 단계로 넘어갈 수 있습니다.",
+                "text": "[YouTube 접근 제한]\n\n해결 방법:\n1. 동영상을 로컬에 다운로드 후 파일 업로드\n2. 브라우저에서 자막을 복사하여 텍스트 분석\n3. 로컬 환경에서 실행\n\n테스트용 샘플 텍스트:\n오늘은 중요한 수업 내용을 다루겠습니다. 이 내용을 잘 이해하면 다음 단계로 넘어갈 수 있습니다.",
                 "language": language,
-                "source": "mock_due_to_bot_protection",
-                "message": "YouTube가 봇 보호를 활성화했습니다. API 키 설정이 필요합니다."
+                "source": "mock_youtube_blocked",
+                "message": "YouTube 접근이 차단되었습니다. 대체 방법을 사용하세요.",
+                "error_type": "access_denied"
             }
+        elif "unavailable" in error_msg.lower() or "private" in error_msg.lower():
+            # Video unavailable or private
+            job.status = "failed"
+            job.error = "동영상을 사용할 수 없습니다 (비공개 또는 삭제됨)"
+            job.completed_at = datetime.now()
+        elif "no transcript" in error_msg.lower() or "no caption" in error_msg.lower():
+            # No captions available
+            job.status = "failed"
+            job.error = "자막이 없는 동영상입니다. 오디오 다운로드 후 Whisper 전사가 필요합니다."
+            job.completed_at = datetime.now()
         else:
             job.status = "failed"
             job.error = error_msg

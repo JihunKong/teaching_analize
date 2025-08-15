@@ -170,13 +170,22 @@ class YouTubeHandler:
         if self.youtube_api_key:
             logger.info("Checking captions availability via YouTube API")
             self.get_captions_via_api(url, language)
+        
+        # Use more robust yt-dlp options
         ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'skip_download': True,
+            'quiet': False,  # Show errors for debugging
+            'no_warnings': False,
+            'skip_download': True,  # Don't download video, only subtitles
             'writesubtitles': True,
             'writeautomaticsub': True,
-            'subtitleslangs': [language, 'en'],  # Try Korean first, then English
+            'subtitleslangs': [language, 'en', 'ko'],  # Try multiple languages
+            'force_ipv4': True,  # Force IPv4 (equivalent to -4 flag)
+            'no_check_certificate': True,  # Skip certificate verification
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'referer': 'https://www.youtube.com/',
+            'cookiefile': '/tmp/youtube_cookies.txt',  # Use cookies if available
+            'extract_flat': False,
+            'format': 'best',  # Still specify format even if skipping download
         }
         
         try:

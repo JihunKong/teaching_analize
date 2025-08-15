@@ -2,7 +2,7 @@
 
 ## YouTube API Key 받음!
 ```
-***REMOVED***
+AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw
 ```
 
 ## 🚀 Railway에 지금 설정하기
@@ -10,7 +10,7 @@
 ### 방법 1: Railway CLI (빠름)
 ```bash
 railway link
-railway variables set YOUTUBE_API_KEY=***REMOVED***
+railway variables set YOUTUBE_API_KEY=AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw
 ```
 
 ### 방법 2: Railway Dashboard (쉬움)
@@ -21,7 +21,7 @@ railway variables set YOUTUBE_API_KEY=***REMOVED***
 5. **New Variable** 클릭
 6. 입력:
    - Key: `YOUTUBE_API_KEY`
-   - Value: `***REMOVED***`
+   - Value: `AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw`
 7. **Add** 클릭
 8. 자동 재배포 시작 (2-3분)
 
