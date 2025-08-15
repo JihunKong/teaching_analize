@@ -32,7 +32,7 @@ router = APIRouter(prefix="/api/transcribe", tags=["transcription"])
 logger = logging.getLogger(__name__)
 
 @router.get("/debug-youtube")
-async def debug_youtube_access():
+async def debug_youtube_access(x_api_key: str = Header(None)):
     """YouTube 접근 상태 진단 (교육 목적)"""
     try:
         # 진단 스크립트 실행
