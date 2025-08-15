@@ -23,8 +23,8 @@ maxUploadSize = 200
 # Max size for message payloads (in MB)
 maxMessageSize = 200
 
-# Enables CORS protection
-enableCORS = false
+# Enables CORS protection (must be true when enableXsrfProtection is true)
+enableCORS = true
 
 # Enables XSRF protection
 enableXsrfProtection = true
@@ -32,38 +32,27 @@ enableXsrfProtection = true
 # Enables support for websocket compression
 enableWebsocketCompression = true
 
-# Port to use for the server
-port = 8501
+# Run in headless mode for server deployment
+headless = true
 
 [browser]
-# Internet address where users should point their browsers
-serverAddress = "0.0.0.0"
-
 # Whether to send usage statistics to Streamlit
 gatherUsageStats = false
-
-# Port where users should point their browsers
-serverPort = 8501
 
 [runner]
 # Allows you to type a variable or string by itself to write it to the app
 magicEnabled = true
 
-# Install a Python tracer to allow you to stop/resume execution
-installTracer = false
-
-# Sets the MPLBACKEND environment variable
-fixMatplotlib = true
+# Perform garbage collection after each script run
+postScriptGC = true
 
 [client]
-# Whether to enable st.cache
-caching = true
-
-# If false, makes your Streamlit app not draw to a Streamlit app
-displayEnabled = true
-
 # Controls whether uncaught app exceptions are displayed in the browser
 showErrorDetails = true
 
 # Change the visibility of toolbar
 toolbarMode = "minimal"
+
+[logger]
+# Log level
+level = "info"
