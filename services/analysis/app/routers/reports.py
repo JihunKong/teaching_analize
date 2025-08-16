@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timedelta
 
-from ..database import get_db, get_analysis, get_recent_analyses, get_teacher_analyses
+from ..enhanced_database import get_db, get_analysis, get_recent_analyses, get_teacher_analyses, increment_report_count
+from ..html_report_generator import HTMLReportGenerator
 
 router = APIRouter()
 
@@ -25,8 +26,30 @@ async def get_analysis_report(
     if format == "json":
         return analysis.to_dict()
     elif format == "pdf":
-        # Generate PDF report (placeholder)
-        return {"message": "PDF generation not implemented yet"}
+        try:
+            # Initialize HTML report generator
+            generator = HTMLReportGenerator()
+            
+            # Convert analysis to format expected by generator
+            analysis_data = analysis.to_dict()
+            
+            # Generate HTML report
+            html_content = generator.generate_html_report(analysis_data)
+            
+            # Increment report generation count
+            increment_report_count(db, analysis_id)
+            
+            # Return HTML as response
+            return Response(
+                content=html_content,
+                media_type="text/html",
+                headers={
+                    "Content-Disposition": f"inline; filename=aiboa_report_{analysis_id}.html"
+                }
+            )
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
     else:
         raise HTTPException(status_code=400, detail="Invalid format")
 
@@ -168,3 +191,43 @@ async def export_report(
     
     else:
         raise HTTPException(status_code=400, detail="Unsupported export format")
+
+@router.get("/pdf/{analysis_id}")
+async def generate_pdf_report(
+    analysis_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate and download PDF report for analysis
+    """
+    analysis = get_analysis(db, analysis_id)
+    
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    
+    try:
+        # Initialize HTML report generator
+        generator = HTMLReportGenerator()
+        
+        # Convert analysis to format expected by generator
+        analysis_data = analysis.to_dict()
+        
+        # Generate HTML report
+        html_content = generator.generate_html_report(analysis_data)
+        
+        # Increment report generation count
+        increment_report_count(db, analysis_id)
+        
+        # Return HTML as downloadable file
+        return Response(
+            content=html_content,
+            media_type="text/html",
+            headers={
+                "Content-Disposition": f"inline; filename=AIBOA_Report_{analysis_id}_{datetime.now().strftime('%Y%m%d')}.html",
+                "Content-Type": "text/html; charset=utf-8"
+            }
+        )
+        
+    except Exception as e:
+        print(f"PDF generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")

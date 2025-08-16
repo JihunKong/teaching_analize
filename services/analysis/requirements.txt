@@ -3,3 +3,11 @@ uvicorn[standard]==0.24.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
 python-dotenv==1.0.0
+python-multipart==0.0.6
+
+# PDF Generation Dependencies
+weasyprint==60.2
+matplotlib==3.8.2
+Pillow==10.1.0
+jinja2==3.1.2
+reportlab==4.0.8

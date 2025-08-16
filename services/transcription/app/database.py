@@ -11,15 +11,28 @@ from .models import JobStatus, TranscriptionMethod
 
 logger = logging.getLogger(__name__)
 
-# Database URL from environment
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/aiboa")
+# Database URL from environment with SQLite fallback
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    # Fallback to SQLite for local development
+    DATABASE_URL = "sqlite:///./transcription.db"
+    logger.info("Using SQLite database (fallback)")
+else:
+    logger.info(f"Using database: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}")
 
-# Create engine
-engine = create_engine(
-    DATABASE_URL,
-    poolclass=NullPool,  # Disable connection pooling for Railway
-    echo=False
-)
+# Create engine with appropriate configuration
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},  # Needed for SQLite
+        echo=False
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        poolclass=NullPool,  # Disable connection pooling for Railway
+        echo=False
+    )
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

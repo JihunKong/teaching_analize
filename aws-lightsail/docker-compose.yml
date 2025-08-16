@@ -1,0 +1,173 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aiboa_postgres
+    environment:
+      POSTGRES_DB: aiboa
+      POSTGRES_USER: aiboa_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiboa_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiboa_user -d aiboa"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: aiboa_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Transcription Service
+  transcription:
+    build:
+      context: ../services/transcription
+      dockerfile: Dockerfile
+    container_name: aiboa_transcription
+    environment:
+      # Database
+      DATABASE_URL: postgresql://aiboa_user:${POSTGRES_PASSWORD:-aiboa_password}@postgres:5432/aiboa
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      
+      # Application
+      API_KEY: ${TRANSCRIPTION_API_KEY:-transcription-api-key}
+      STORAGE_PATH: /app/data
+      
+    volumes:
+      - transcription_data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Analysis Service  
+  analysis:
+    build:
+      context: ../services/analysis
+      dockerfile: Dockerfile
+    container_name: aiboa_analysis
+    environment:
+      # Database
+      DATABASE_URL: postgresql://aiboa_user:${POSTGRES_PASSWORD:-aiboa_password}@postgres:5432/aiboa
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # API Keys
+      SOLAR_API_KEY: ${SOLAR_API_KEY}
+      UPSTAGE_API_KEY: ${UPSTAGE_API_KEY}
+      
+      # Application
+      API_KEY: ${ANALYSIS_API_KEY:-analysis-api-key}
+      TRANSCRIPTION_API_URL: http://transcription:8000
+      
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      transcription:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Frontend Service (React/Next.js)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: aiboa_frontend
+    environment:
+      # API Endpoints
+      TRANSCRIPTION_API_URL: http://transcription:8000
+      ANALYSIS_API_URL: http://analysis:8001
+      
+      # API Keys
+      API_KEY: ${FRONTEND_API_KEY:-frontend-api-key}
+      
+      # Next.js Configuration
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: 1
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+      
+    ports:
+      - "3000:3000"
+    depends_on:
+      transcription:
+        condition: service_healthy
+      analysis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: aiboa_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - transcription
+      - analysis
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  transcription_data:
+    driver: local
+
+networks:
+  default:
+    name: aiboa_network

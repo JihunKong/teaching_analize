@@ -17,7 +17,7 @@ from ..models import (
 from ..services.storage import StorageService
 from ..services.whisper import WhisperService
 from ..services.youtube import YouTubeService
-from ..tasks import process_transcription_task
+# from ..tasks import process_transcription_task  # Using simple async tasks instead of Celery
 from ..database import get_db
 
 router = APIRouter()
@@ -75,7 +75,7 @@ async def upload_file(
     
     # Queue background task
     background_tasks.add_task(
-        process_transcription_task,
+        process_file_transcription,
         job_id=job_id,
         file_path=file_path,
         language=language,
@@ -196,7 +196,7 @@ async def process_youtube_transcription(job_id: str, url: str, language: str):
         audio_path = await youtube_service.download_audio(url, job_id)
         
         # Process with Whisper
-        await process_transcription_task(
+        await process_file_transcription(
             job_id=job_id,
             file_path=audio_path,
             language=language,
@@ -209,12 +209,80 @@ async def process_youtube_transcription(job_id: str, url: str, language: str):
         # Update database with error
 
 def save_job_to_db(db: Session, job: TranscriptionJob):
-    # Implementation for saving job to database
-    pass
+    """Save job to database"""
+    from ..database import create_job, TranscriptionMethod
+    try:
+        db_job = create_job(
+            db=db,
+            job_id=job.job_id,
+            file_name=getattr(job, 'file_name', None),
+            file_size=getattr(job, 'file_size', None),
+            language=job.language,
+            method=getattr(job, 'method', TranscriptionMethod.WHISPER)
+        )
+        return db_job
+    except Exception as e:
+        print(f"Failed to save job to database: {e}")
+        return None
 
 def get_job_from_db(db: Session, job_id: str):
-    # Implementation for getting job from database
-    pass
+    """Get job from database"""
+    from ..database import get_job
+    try:
+        return get_job(db, job_id)
+    except Exception as e:
+        print(f"Failed to get job from database: {e}")
+        return None
+
+async def process_file_transcription(
+    job_id: str,
+    file_path: str,
+    language: str,
+    include_timestamps: bool = True,
+    speaker_diarization: bool = False
+):
+    """Process file transcription using Whisper API"""
+    from ..database import update_job_status
+    import os
+    
+    try:
+        # Update status to processing
+        update_job_status(job_id, "processing")
+        
+        # Transcribe with Whisper
+        result = await whisper_service.transcribe(
+            file_path=file_path,
+            language=language,
+            include_timestamps=include_timestamps
+        )
+        
+        # Save transcript
+        await storage_service.save_transcript(job_id, result)
+        
+        # Update status to completed
+        update_job_status(
+            job_id=job_id,
+            status="completed",
+            duration=result.get("duration"),
+            completed_at=datetime.utcnow()
+        )
+        
+        # Clean up temporary file
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+    except Exception as e:
+        # Update status to failed
+        update_job_status(
+            job_id=job_id,
+            status="failed",
+            error_message=str(e),
+            completed_at=datetime.utcnow()
+        )
+        
+        # Clean up temporary file on error
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 def convert_to_srt(transcript: dict) -> str:
     # Convert transcript segments to SRT format

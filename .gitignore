@@ -31,6 +31,14 @@ env/
 .env.local
 .env.production
 *.env
+aws-lightsail/.env
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+frontend/.env*
 
 # IDE
 .vscode/

@@ -7,8 +7,9 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 
 from .routers import analyze, reports
+from .routers.enhanced_analyze import router as enhanced_analyze_router
 from .models import HealthCheck
-from .database import init_db
+from .enhanced_database import init_db
 
 API_KEY = os.getenv("API_KEY", "development-key")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -59,6 +60,14 @@ app.include_router(
     analyze.router,
     prefix="/api/analyze",
     tags=["analysis"],
+    dependencies=[Depends(verify_api_key)]
+)
+
+# Add enhanced analyzer with immediate response
+app.include_router(
+    enhanced_analyze_router,
+    prefix="/api/analyze",
+    tags=["enhanced-analysis"],
     dependencies=[Depends(verify_api_key)]
 )
 
