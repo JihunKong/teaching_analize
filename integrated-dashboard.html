@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIBOA - AI 교육 분석 통합 플랫폼</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* Custom CSS for enhanced UI */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        
+        .progress-ring__circle {
+            transition: stroke-dasharray 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .floating-action {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        /* Dark mode support */
+        .dark {
+            background-color: #1a202c;
+            color: #f7fafc;
+        }
+        
+        .dark .bg-white {
+            background-color: #2d3748;
+        }
+        
+        .dark .text-gray-900 {
+            color: #f7fafc;
+        }
+        
+        .dark .border-gray-200 {
+            border-color: #4a5568;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 transition-colors duration-300" id="app">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <div class="text-3xl">🎓</div>
+                    <div>
+                        <h1 class="text-3xl font-bold">AIBOA</h1>
+                        <p class="text-blue-100">AI 기반 교육 관찰 및 분석 통합 플랫폼</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors">
+                        <i class="fas fa-moon" id="theme-icon"></i>
+                    </button>
+                    <!-- Status Indicator -->
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                        <span class="text-sm">시스템 정상</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white shadow-sm border-b" id="navigation">
+        <div class="container mx-auto px-4">
+            <div class="flex space-x-8 overflow-x-auto">
+                <button class="tab-button py-4 px-6 border-b-2 border-blue-500 text-blue-600 font-medium whitespace-nowrap" 
+                        data-tab="workflow" onclick="switchTab('workflow')">
+                    <i class="fas fa-play-circle mr-2"></i>통합 워크플로우
+                </button>
+                <button class="tab-button py-4 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium whitespace-nowrap" 
+                        data-tab="transcription" onclick="switchTab('transcription')">
+                    <i class="fas fa-microphone mr-2"></i>전사
+                </button>
+                <button class="tab-button py-4 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium whitespace-nowrap" 
+                        data-tab="analysis" onclick="switchTab('analysis')">
+                    <i class="fas fa-chart-line mr-2"></i>분석
+                </button>
+                <button class="tab-button py-4 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium whitespace-nowrap" 
+                        data-tab="dashboard" onclick="switchTab('dashboard')">
+                    <i class="fas fa-tachometer-alt mr-2"></i>대시보드
+                </button>
+                <button class="tab-button py-4 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium whitespace-nowrap" 
+                        data-tab="history" onclick="switchTab('history')">
+                    <i class="fas fa-history mr-2"></i>히스토리
+                </button>
+                <button class="tab-button py-4 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium whitespace-nowrap" 
+                        data-tab="settings" onclick="switchTab('settings')">
+                    <i class="fas fa-cog mr-2"></i>설정
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Alert System -->
+        <div id="alert-container" class="mb-6"></div>
+        
+        <!-- Workflow Tab -->
+        <div id="workflow-tab" class="tab-content active">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Input Panel -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                            <i class="fas fa-play-circle text-blue-500 mr-3"></i>
+                            통합 분석 시작
+                        </h2>
+                        
+                        <form id="workflow-form" class="space-y-6">
+                            <!-- YouTube URL Input -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fab fa-youtube text-red-500 mr-2"></i>
+                                    YouTube URL
+                                </label>
+                                <input type="url" 
+                                       id="youtube-url" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="https://www.youtube.com/watch?v=..." 
+                                       required>
+                            </div>
+                            
+                            <!-- Analysis Options -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    분석 옵션
+                                </label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="analysis-teaching" checked class="rounded text-blue-600">
+                                        <span class="ml-2 text-sm">교육 코칭 분석</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="analysis-dialogue" checked class="rounded text-blue-600">
+                                        <span class="ml-2 text-sm">대화 패턴 분석</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="analysis-cbil" checked class="rounded text-blue-600">
+                                        <span class="ml-2 text-sm">CBIL 분석</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Language Selection -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">언어</label>
+                                <select id="language" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="ko">한국어</option>
+                                    <option value="en">English</option>
+                                    <option value="auto">자동 감지</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Start Button -->
+                            <button type="submit" 
+                                    id="start-workflow-btn"
+                                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-6 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-rocket mr-2"></i>
+                                분석 시작
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Progress Panel -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                            <i class="fas fa-tasks text-green-500 mr-3"></i>
+                            진행 상황
+                        </h2>
+                        
+                        <!-- Progress Steps -->
+                        <div id="progress-container" class="space-y-6">
+                            <!-- Step 1: Transcription -->
+                            <div class="progress-step" data-step="transcription">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <div class="step-icon w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                            <i class="fas fa-microphone text-gray-500"></i>
+                                        </div>
+                                        <span class="font-medium">YouTube 전사</span>
+                                    </div>
+                                    <span class="step-status text-sm text-gray-500">대기 중</span>
+                                </div>
+                                <div class="progress-bar bg-gray-200 rounded-full h-2 ml-11">
+                                    <div class="progress-fill bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 2: Analysis -->
+                            <div class="progress-step" data-step="analysis">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <div class="step-icon w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                            <i class="fas fa-brain text-gray-500"></i>
+                                        </div>
+                                        <span class="font-medium">AI 분석</span>
+                                    </div>
+                                    <span class="step-status text-sm text-gray-500">대기 중</span>
+                                </div>
+                                <div class="progress-bar bg-gray-200 rounded-full h-2 ml-11">
+                                    <div class="progress-fill bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 3: Visualization -->
+                            <div class="progress-step" data-step="visualization">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <div class="step-icon w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                            <i class="fas fa-chart-bar text-gray-500"></i>
+                                        </div>
+                                        <span class="font-medium">결과 시각화</span>
+                                    </div>
+                                    <span class="step-status text-sm text-gray-500">대기 중</span>
+                                </div>
+                                <div class="progress-bar bg-gray-200 rounded-full h-2 ml-11">
+                                    <div class="progress-fill bg-purple-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Real-time Log -->
+                        <div class="mt-8">
+                            <h3 class="font-medium text-gray-900 mb-3">실시간 로그</h3>
+                            <div id="workflow-log" class="bg-gray-50 rounded-lg p-4 h-32 overflow-y-auto font-mono text-sm text-gray-700">
+                                시스템 준비 완료. 분석을 시작하려면 위의 버튼을 클릭하세요.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transcription Tab -->
+        <div id="transcription-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-microphone text-blue-500 mr-3"></i>
+                    YouTube 전사 서비스
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <form id="transcription-form" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">YouTube URL</label>
+                                <input type="url" 
+                                       id="transcription-url" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       placeholder="https://www.youtube.com/watch?v=...">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">언어</label>
+                                <select id="transcription-language" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                    <option value="ko">한국어</option>
+                                    <option value="en">English</option>
+                                    <option value="auto">자동 감지</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">내보내기 형식</label>
+                                <select id="export-format" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                    <option value="json">JSON</option>
+                                    <option value="srt">SRT</option>
+                                    <option value="txt">TXT</option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" 
+                                    id="transcribe-btn"
+                                    class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-play mr-2"></i>전사 시작
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-4">전사 결과</h3>
+                        <div id="transcription-result" class="bg-gray-50 rounded-lg p-4 h-64 overflow-y-auto">
+                            <p class="text-gray-500 text-center">전사 결과가 여기에 표시됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Tab -->
+        <div id="analysis-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-chart-line text-green-500 mr-3"></i>
+                    교육 분석 서비스
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <form id="analysis-form" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">분석할 텍스트</label>
+                                <textarea id="analysis-text" 
+                                          rows="8" 
+                                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                          placeholder="분석할 교육 내용을 입력하세요..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">분석 유형</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="analysis-type" value="teaching" checked class="text-green-600">
+                                        <span class="ml-2">교육 코칭 분석</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="analysis-type" value="dialogue" class="text-green-600">
+                                        <span class="ml-2">대화 패턴 분석</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="analysis-type" value="cbil" class="text-green-600">
+                                        <span class="ml-2">CBIL 분석</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" 
+                                    id="analyze-btn"
+                                    class="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                                <i class="fas fa-brain mr-2"></i>분석 시작
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-4">분석 결과</h3>
+                        <div id="analysis-result" class="bg-gray-50 rounded-lg p-4 h-64 overflow-y-auto">
+                            <p class="text-gray-500 text-center">분석 결과가 여기에 표시됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard-tab" class="tab-content">
+            <div class="space-y-8">
+                <!-- Summary Cards -->
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <i class="fas fa-video text-blue-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">총 영상</h3>
+                                <p class="text-2xl font-bold text-blue-600" id="total-videos">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <i class="fas fa-chart-line text-green-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">분석 완료</h3>
+                                <p class="text-2xl font-bold text-green-600" id="completed-analyses">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <i class="fas fa-clock text-yellow-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">평균 시간</h3>
+                                <p class="text-2xl font-bold text-yellow-600" id="average-time">0분</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-purple-100 rounded-lg">
+                                <i class="fas fa-star text-purple-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">평균 점수</h3>
+                                <p class="text-2xl font-bold text-purple-600" id="average-score">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts -->
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <!-- CBIL Analysis Chart -->
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">CBIL 레벨 분포</h3>
+                        <div class="chart-container">
+                            <canvas id="cbil-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Teaching Quality Chart -->
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">교육 품질 지표</h3>
+                        <div class="chart-container">
+                            <canvas id="quality-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Timeline Chart -->
+                    <div class="lg:col-span-2 bg-white rounded-lg shadow-lg p-6">
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">분석 결과 타임라인</h3>
+                        <div class="chart-container">
+                            <canvas id="timeline-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-history text-orange-500 mr-3"></i>
+                        분석 히스토리
+                    </h2>
+                    <div class="flex space-x-3">
+                        <button id="export-history-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-download mr-2"></i>내보내기
+                        </button>
+                        <button id="clear-history-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            <i class="fas fa-trash mr-2"></i>전체 삭제
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- History Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">YouTube URL</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">분석 유형</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">결과</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- History entries will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="space-y-8">
+                <!-- API Configuration -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                        <i class="fas fa-cog text-gray-500 mr-3"></i>
+                        API 설정
+                    </h2>
+                    
+                    <form id="settings-form" class="space-y-6">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">전사 서비스 URL</label>
+                                <input type="url" 
+                                       id="transcription-api-url" 
+                                       value=""
+                                       placeholder="/api/transcribe (Nginx 프록시 사용)"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">분석 서비스 URL</label>
+                                <input type="url" 
+                                       id="analysis-api-url" 
+                                       value=""
+                                       placeholder="/api/analyze (Nginx 프록시 사용)"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">통합 서비스 URL</label>
+                                <input type="url" 
+                                       id="integration-api-url" 
+                                       value=""
+                                       placeholder="/api/integrate (Nginx 프록시 사용)"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">API 키</label>
+                                <input type="password" 
+                                       id="api-key" 
+                                       value="test-api-key"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-save mr-2"></i>설정 저장
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- System Status -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                        <i class="fas fa-server text-green-500 mr-3"></i>
+                        시스템 상태
+                    </h2>
+                    
+                    <div id="system-status" class="space-y-4">
+                        <!-- Status items will be populated here -->
+                    </div>
+                    
+                    <button id="check-status-btn" class="mt-6 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                        <i class="fas fa-sync-alt mr-2"></i>상태 확인
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <div class="floating-action">
+        <button id="fab-btn" class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-8 max-w-sm w-full mx-4">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <h3 class="mt-4 text-lg font-semibold text-gray-900">처리 중...</h3>
+                <p class="mt-2 text-gray-600" id="loading-message">잠시만 기다려주세요.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Global Configuration and State
+        class AIBOAApp {
+            constructor() {
+                this.config = {
+                    transcriptionAPI: '',  // Use nginx proxy paths
+                    analysisAPI: '',
+                    integrationAPI: '',
+                    apiKey: 'test-api-key'
+                };
+                
+                this.state = {
+                    currentTab: 'workflow',
+                    workflowData: {},
+                    analysisHistory: [],
+                    charts: {},
+                    darkMode: false
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                this.loadSettings();
+                this.setupEventListeners();
+                this.loadHistory();
+                this.updateSystemStatus();
+                this.setupCharts();
+                
+                // Set initial tab
+                this.switchTab('workflow');
+                
+                // Initialize dark mode
+                if (localStorage.getItem('darkMode') === 'true') {
+                    this.toggleDarkMode();
+                }
+            }
+            
+            loadSettings() {
+                const savedConfig = localStorage.getItem('aiboa-config');
+                if (savedConfig) {
+                    this.config = { ...this.config, ...JSON.parse(savedConfig) };
+                    this.updateSettingsForm();
+                }
+            }
+            
+            saveSettings() {
+                localStorage.setItem('aiboa-config', JSON.stringify(this.config));
+                this.showAlert('설정이 저장되었습니다.', 'success');
+            }
+            
+            updateSettingsForm() {
+                document.getElementById('transcription-api-url').value = this.config.transcriptionAPI;
+                document.getElementById('analysis-api-url').value = this.config.analysisAPI;
+                document.getElementById('integration-api-url').value = this.config.integrationAPI;
+                document.getElementById('api-key').value = this.config.apiKey;
+            }
+            
+            setupEventListeners() {
+                // Tab switching
+                document.querySelectorAll('[data-tab]').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const tabName = e.target.closest('[data-tab]').dataset.tab;
+                        this.switchTab(tabName);
+                    });
+                });
+                
+                // Theme toggle
+                document.getElementById('theme-toggle').addEventListener('click', () => {
+                    this.toggleDarkMode();
+                });
+                
+                // Form submissions
+                document.getElementById('workflow-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.startWorkflow();
+                });
+                
+                document.getElementById('transcription-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.startTranscription();
+                });
+                
+                document.getElementById('analysis-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.startAnalysis();
+                });
+                
+                document.getElementById('settings-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.updateConfigFromForm();
+                    this.saveSettings();
+                });
+                
+                // Status check
+                document.getElementById('check-status-btn').addEventListener('click', () => {
+                    this.updateSystemStatus();
+                });
+                
+                // History management
+                document.getElementById('export-history-btn').addEventListener('click', () => {
+                    this.exportHistory();
+                });
+                
+                document.getElementById('clear-history-btn').addEventListener('click', () => {
+                    if (confirm('정말로 모든 히스토리를 삭제하시겠습니까?')) {
+                        this.clearHistory();
+                    }
+                });
+            }
+            
+            switchTab(tabName) {
+                // Update state
+                this.state.currentTab = tabName;
+                
+                // Hide all tabs
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Show selected tab
+                document.getElementById(tabName + '-tab').classList.add('active');
+                
+                // Update tab buttons
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('border-blue-500', 'text-blue-600');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                });
+                
+                const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.remove('border-transparent', 'text-gray-500');
+                    activeBtn.classList.add('border-blue-500', 'text-blue-600');
+                }
+                
+                // Load tab-specific data
+                if (tabName === 'dashboard') {
+                    this.updateDashboard();
+                } else if (tabName === 'history') {
+                    this.loadHistoryTable();
+                } else if (tabName === 'settings') {
+                    this.updateSystemStatus();
+                }
+            }
+            
+            toggleDarkMode() {
+                this.state.darkMode = !this.state.darkMode;
+                document.body.classList.toggle('dark');
+                
+                const icon = document.getElementById('theme-icon');
+                icon.className = this.state.darkMode ? 'fas fa-sun' : 'fas fa-moon';
+                
+                localStorage.setItem('darkMode', this.state.darkMode);
+            }
+            
+            async startWorkflow() {
+                const url = document.getElementById('youtube-url').value;
+                const language = document.getElementById('language').value;
+                const analysisOptions = {
+                    teaching: document.getElementById('analysis-teaching').checked,
+                    dialogue: document.getElementById('analysis-dialogue').checked,
+                    cbil: document.getElementById('analysis-cbil').checked
+                };
+                
+                if (!url) {
+                    this.showAlert('YouTube URL을 입력해주세요.', 'error');
+                    return;
+                }
+                
+                try {
+                    this.showLoading('통합 워크플로우 시작 중...');
+                    this.updateProgress('transcription', 'running', 'YouTube 영상 처리 중...');
+                    this.logMessage('🚀 통합 워크플로우 시작');
+                    
+                    // Step 1: Transcription
+                    const transcriptionResult = await this.callAPI(
+                        '/api/transcribe/youtube',
+                        'POST',
+                        {
+                            youtube_url: url,
+                            language: language,
+                            export_format: 'json'
+                        }
+                    );
+                    
+                    if (transcriptionResult.error) {
+                        throw new Error(transcriptionResult.error);
+                    }
+                    
+                    // Poll for transcription completion
+                    const transcript = await this.pollJobStatus(transcriptionResult.job_id, 'transcription');
+                    this.updateProgress('transcription', 'completed', '전사 완료');
+                    this.logMessage('✅ 전사 완료');
+                    
+                    // Step 2: Analysis
+                    this.updateProgress('analysis', 'running', 'AI 분석 수행 중...');
+                    this.logMessage('🧠 AI 분석 시작');
+                    
+                    const analysisResults = {};
+                    
+                    if (analysisOptions.teaching) {
+                        analysisResults.teaching = await this.callAPI(
+                            '/api/analyze/comprehensive',
+                            'POST',
+                            {
+                                transcript: transcript.text,
+                                analysis_type: 'comprehensive'
+                            }
+                        );
+                    }
+                    
+                    if (analysisOptions.dialogue) {
+                        analysisResults.dialogue = await this.callAPI(
+                            '/api/analyze/comprehensive',
+                            'POST',
+                            {
+                                transcript: transcript.text,
+                                analysis_type: 'comprehensive'
+                            }
+                        );
+                    }
+                    
+                    if (analysisOptions.cbil) {
+                        analysisResults.cbil = await this.callAPI(
+                            '/api/analyze/comprehensive',
+                            'POST',
+                            {
+                                text: transcript.text,
+                                framework: 'cbil'
+                            }
+                        );
+                    }
+                    
+                    this.updateProgress('analysis', 'completed', '분석 완료');
+                    this.logMessage('✅ 분석 완료');
+                    
+                    // Step 3: Visualization
+                    this.updateProgress('visualization', 'running', '결과 시각화 중...');
+                    this.logMessage('📊 결과 시각화 생성');
+                    
+                    // Store results
+                    const workflowResult = {
+                        id: Date.now(),
+                        timestamp: new Date().toISOString(),
+                        url: url,
+                        transcript: transcript,
+                        analysis: analysisResults,
+                        language: language
+                    };
+                    
+                    this.state.workflowData = workflowResult;
+                    this.addToHistory(workflowResult);
+                    
+                    this.updateProgress('visualization', 'completed', '완료');
+                    this.logMessage('🎉 워크플로우 완료!');
+                    
+                    // Switch to dashboard to show results
+                    setTimeout(() => {
+                        this.switchTab('dashboard');
+                        this.updateDashboard();
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Workflow error:', error);
+                    this.showAlert(`오류가 발생했습니다: ${error.message}`, 'error');
+                    this.logMessage(`❌ 오류: ${error.message}`);
+                } finally {
+                    this.hideLoading();
+                }
+            }
+            
+            async startTranscription() {
+                const url = document.getElementById('transcription-url').value;
+                const language = document.getElementById('transcription-language').value;
+                const format = document.getElementById('export-format').value;
+                
+                if (!url) {
+                    this.showAlert('YouTube URL을 입력해주세요.', 'error');
+                    return;
+                }
+                
+                try {
+                    this.showLoading('전사 처리 중...');
+                    
+                    const result = await this.callAPI(
+                        '/api/transcribe/youtube',
+                        'POST',
+                        {
+                            youtube_url: url,
+                            language: language,
+                            export_format: format
+                        }
+                    );
+                    
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+                    
+                    const transcript = await this.pollJobStatus(result.job_id, 'transcription');
+                    
+                    // Display result
+                    const resultDiv = document.getElementById('transcription-result');
+                    resultDiv.innerHTML = `
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-semibold">전사 결과</h4>
+                                <button onclick="app.downloadTranscript()" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-download mr-1"></i>다운로드
+                                </button>
+                            </div>
+                            <div class="bg-white p-4 rounded border max-h-48 overflow-y-auto">
+                                ${transcript.text || JSON.stringify(transcript, null, 2)}
+                            </div>
+                        </div>
+                    `;
+                    
+                    this.state.lastTranscript = transcript;
+                    this.showAlert('전사가 완료되었습니다.', 'success');
+                    
+                } catch (error) {
+                    console.error('Transcription error:', error);
+                    this.showAlert(`전사 중 오류가 발생했습니다: ${error.message}`, 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            }
+            
+            async startAnalysis() {
+                const text = document.getElementById('analysis-text').value;
+                const analysisType = document.querySelector('input[name="analysis-type"]:checked').value;
+                
+                if (!text.trim()) {
+                    this.showAlert('분석할 텍스트를 입력해주세요.', 'error');
+                    return;
+                }
+                
+                try {
+                    this.showLoading('분석 처리 중...');
+                    
+                    const result = await this.callAPI(
+                        '/api/analyze/comprehensive',
+                        'POST',
+                        {
+                            transcript: text,
+                            analysis_type: 'comprehensive'
+                        }
+                    );
+                    
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+                    
+                    // Display result
+                    const resultDiv = document.getElementById('analysis-result');
+                    resultDiv.innerHTML = `
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-semibold">분석 결과</h4>
+                                <button onclick="app.downloadAnalysis()" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-download mr-1"></i>다운로드
+                                </button>
+                            </div>
+                            <div class="bg-white p-4 rounded border max-h-48 overflow-y-auto">
+                                ${this.formatAnalysisResult(result, analysisType)}
+                            </div>
+                        </div>
+                    `;
+                    
+                    this.state.lastAnalysis = result;
+                    this.showAlert('분석이 완료되었습니다.', 'success');
+                    
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    this.showAlert(`분석 중 오류가 발생했습니다: ${error.message}`, 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            }
+            
+            formatAnalysisResult(result, type) {
+                if (type === 'cbil' && result.analysis) {
+                    const analysis = result.analysis;
+                    return `
+                        <div class="space-y-2">
+                            <div><strong>전체 점수:</strong> ${analysis.overall_score || 'N/A'}</div>
+                            <div><strong>주요 레벨:</strong> ${analysis.primary_level || 'N/A'}</div>
+                            <div><strong>레벨 분포:</strong></div>
+                            <div class="ml-4 text-sm">
+                                ${Object.entries(analysis.level_distribution || {}).map(([level, count]) => 
+                                    `Level ${level}: ${count}개`
+                                ).join('<br>')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                return `<pre class="text-sm">${JSON.stringify(result, null, 2)}</pre>`;
+            }
+            
+            async callAPI(url, method, data) {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': this.config.apiKey
+                    },
+                    body: data ? JSON.stringify(data) : undefined
+                });
+                
+                return await response.json();
+            }
+            
+            async pollJobStatus(jobId, service) {
+                const maxAttempts = 30;
+                let attempts = 0;
+                
+                while (attempts < maxAttempts) {
+                    try {
+                        const endpoint = service === 'transcription' ? '/api/transcribe/' : '/api/analyze/job/';
+                        const response = await this.callAPI(`${endpoint}${jobId}`, 'GET');
+                        
+                        if (response.status === 'completed') {
+                            return response.result;
+                        } else if (response.status === 'failed') {
+                            throw new Error(response.error || 'Job failed');
+                        }
+                        
+                        // Wait 2 seconds before next poll
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        attempts++;
+                        
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        attempts++;
+                    }
+                }
+                
+                throw new Error('Job timeout');
+            }
+            
+            updateProgress(step, status, message) {
+                const stepElement = document.querySelector(`[data-step="${step}"]`);
+                if (!stepElement) return;
+                
+                const icon = stepElement.querySelector('.step-icon i');
+                const statusText = stepElement.querySelector('.step-status');
+                const progressBar = stepElement.querySelector('.progress-fill');
+                const iconContainer = stepElement.querySelector('.step-icon');
+                
+                // Update status text
+                statusText.textContent = message;
+                
+                // Update icon and colors based on status
+                if (status === 'running') {
+                    icon.className = 'fas fa-spinner fa-spin text-blue-500';
+                    iconContainer.className = 'step-icon w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3';
+                    progressBar.style.width = '50%';
+                } else if (status === 'completed') {
+                    icon.className = 'fas fa-check text-green-500';
+                    iconContainer.className = 'step-icon w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-3';
+                    progressBar.style.width = '100%';
+                } else if (status === 'error') {
+                    icon.className = 'fas fa-times text-red-500';
+                    iconContainer.className = 'step-icon w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mr-3';
+                    progressBar.style.width = '100%';
+                    progressBar.className = progressBar.className.replace('bg-blue-500', 'bg-red-500');
+                }
+            }
+            
+            logMessage(message) {
+                const logElement = document.getElementById('workflow-log');
+                const timestamp = new Date().toLocaleTimeString();
+                logElement.innerHTML += `\n[${timestamp}] ${message}`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            
+            showLoading(message = '처리 중...') {
+                document.getElementById('loading-message').textContent = message;
+                document.getElementById('loading-overlay').classList.remove('hidden');
+            }
+            
+            hideLoading() {
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
+            
+            showAlert(message, type = 'info') {
+                const alertContainer = document.getElementById('alert-container');
+                const alertClass = {
+                    success: 'bg-green-100 border-green-500 text-green-700',
+                    error: 'bg-red-100 border-red-500 text-red-700',
+                    warning: 'bg-yellow-100 border-yellow-500 text-yellow-700',
+                    info: 'bg-blue-100 border-blue-500 text-blue-700'
+                }[type];
+                
+                const alert = document.createElement('div');
+                alert.className = `border-l-4 p-4 rounded ${alertClass}`;
+                alert.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span>${message}</span>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-xl">&times;</button>
+                    </div>
+                `;
+                
+                alertContainer.appendChild(alert);
+                
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (alert.parentElement) {
+                        alert.remove();
+                    }
+                }, 5000);
+            }
+            
+            updateConfigFromForm() {
+                this.config.transcriptionAPI = document.getElementById('transcription-api-url').value;
+                this.config.analysisAPI = document.getElementById('analysis-api-url').value;
+                this.config.integrationAPI = document.getElementById('integration-api-url').value;
+                this.config.apiKey = document.getElementById('api-key').value;
+            }
+            
+            async updateSystemStatus() {
+                const statusContainer = document.getElementById('system-status');
+                const services = [
+                    { name: '전사 서비스', url: '/health' },
+                    { name: '분석 서비스 (직접)', url: 'http://3.38.107.23:8001/health' },
+                    { name: '통합 서비스 (직접)', url: 'http://3.38.107.23:8002/health' }
+                ];
+                
+                statusContainer.innerHTML = '<div class="text-center">상태 확인 중...</div>';
+                
+                const statusHTML = await Promise.all(services.map(async (service) => {
+                    try {
+                        const response = await fetch(service.url);
+                        const isHealthy = response.ok;
+                        
+                        return `
+                            <div class="flex items-center justify-between p-4 border rounded-lg ${isHealthy ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full mr-3 ${isHealthy ? 'bg-green-500' : 'bg-red-500'}"></div>
+                                    <span class="font-medium">${service.name}</span>
+                                </div>
+                                <span class="text-sm ${isHealthy ? 'text-green-600' : 'text-red-600'}">
+                                    ${isHealthy ? '정상' : '오류'}
+                                </span>
+                            </div>
+                        `;
+                    } catch (error) {
+                        return `
+                            <div class="flex items-center justify-between p-4 border rounded-lg border-red-200 bg-red-50">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full mr-3 bg-red-500"></div>
+                                    <span class="font-medium">${service.name}</span>
+                                </div>
+                                <span class="text-sm text-red-600">연결 실패</span>
+                            </div>
+                        `;
+                    }
+                }));
+                
+                statusContainer.innerHTML = statusHTML.join('');
+            }
+            
+            // Chart and Dashboard Methods
+            setupCharts() {
+                // Initialize empty charts
+                this.setupCBILChart();
+                this.setupQualityChart();
+                this.setupTimelineChart();
+            }
+            
+            setupCBILChart() {
+                const ctx = document.getElementById('cbil-chart');
+                if (!ctx) return;
+                
+                this.state.charts.cbil = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6', 'Level 7'],
+                        datasets: [{
+                            data: [0, 0, 0, 0, 0, 0, 0],
+                            backgroundColor: [
+                                '#ef4444', '#f97316', '#eab308', '#22c55e', 
+                                '#06b6d4', '#3b82f6', '#8b5cf6'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            setupQualityChart() {
+                const ctx = document.getElementById('quality-chart');
+                if (!ctx) return;
+                
+                this.state.charts.quality = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['명확성', '상호작용', '참여도', '피드백', '구조화'],
+                        datasets: [{
+                            label: '교육 품질',
+                            data: [0, 0, 0, 0, 0],
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderColor: 'rgb(59, 130, 246)',
+                            pointBackgroundColor: 'rgb(59, 130, 246)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 5
+                            }
+                        }
+                    }
+                });
+            }
+            
+            setupTimelineChart() {
+                const ctx = document.getElementById('timeline-chart');
+                if (!ctx) return;
+                
+                this.state.charts.timeline = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'CBIL 점수',
+                            data: [],
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 7
+                            }
+                        }
+                    }
+                });
+            }
+            
+            updateDashboard() {
+                this.updateSummaryCards();
+                this.updateCharts();
+            }
+            
+            updateSummaryCards() {
+                const history = this.getHistory();
+                
+                document.getElementById('total-videos').textContent = history.length;
+                document.getElementById('completed-analyses').textContent = history.filter(h => h.analysis).length;
+                
+                if (history.length > 0) {
+                    // Calculate average processing time (mock data)
+                    document.getElementById('average-time').textContent = '5분';
+                    
+                    // Calculate average score
+                    const scores = history.filter(h => h.analysis?.cbil?.analysis?.overall_score)
+                                         .map(h => h.analysis.cbil.analysis.overall_score);
+                    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '0';
+                    document.getElementById('average-score').textContent = avgScore;
+                }
+            }
+            
+            updateCharts() {
+                const workflowData = this.state.workflowData;
+                
+                if (workflowData && workflowData.analysis) {
+                    // Update CBIL chart
+                    if (workflowData.analysis.cbil && this.state.charts.cbil) {
+                        const levelDist = workflowData.analysis.cbil.analysis?.level_distribution || {};
+                        const data = [1, 2, 3, 4, 5, 6, 7].map(level => levelDist[level] || 0);
+                        this.state.charts.cbil.data.datasets[0].data = data;
+                        this.state.charts.cbil.update();
+                    }
+                    
+                    // Update quality chart (mock data based on analysis)
+                    if (workflowData.analysis.teaching && this.state.charts.quality) {
+                        const mockQualityData = [4.2, 3.8, 4.5, 3.9, 4.1]; // Mock quality metrics
+                        this.state.charts.quality.data.datasets[0].data = mockQualityData;
+                        this.state.charts.quality.update();
+                    }
+                    
+                    // Update timeline chart
+                    this.updateTimelineChart();
+                }
+            }
+            
+            updateTimelineChart() {
+                const history = this.getHistory();
+                if (history.length === 0) return;
+                
+                const labels = history.map(h => new Date(h.timestamp).toLocaleDateString());
+                const scores = history.map(h => h.analysis?.cbil?.analysis?.overall_score || 0);
+                
+                if (this.state.charts.timeline) {
+                    this.state.charts.timeline.data.labels = labels;
+                    this.state.charts.timeline.data.datasets[0].data = scores;
+                    this.state.charts.timeline.update();
+                }
+            }
+            
+            // History Management
+            addToHistory(result) {
+                let history = this.getHistory();
+                history.unshift(result); // Add to beginning
+                
+                // Keep only last 50 entries
+                if (history.length > 50) {
+                    history = history.slice(0, 50);
+                }
+                
+                localStorage.setItem('aiboa-history', JSON.stringify(history));
+                this.state.analysisHistory = history;
+            }
+            
+            getHistory() {
+                if (this.state.analysisHistory.length === 0) {
+                    this.loadHistory();
+                }
+                return this.state.analysisHistory;
+            }
+            
+            loadHistory() {
+                const stored = localStorage.getItem('aiboa-history');
+                this.state.analysisHistory = stored ? JSON.parse(stored) : [];
+            }
+            
+            loadHistoryTable() {
+                const history = this.getHistory();
+                const tbody = document.getElementById('history-table-body');
+                
+                if (history.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                분석 히스토리가 없습니다.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                tbody.innerHTML = history.map(item => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${new Date(item.timestamp).toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            <a href="${item.url}" target="_blank" class="text-blue-600 hover:text-blue-800 truncate block max-w-xs">
+                                ${item.url}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${Object.keys(item.analysis || {}).join(', ') || 'N/A'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${item.analysis?.cbil?.analysis?.overall_score || 'N/A'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="app.viewHistoryItem('${item.id}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                                보기
+                            </button>
+                            <button onclick="app.deleteHistoryItem('${item.id}')" class="text-red-600 hover:text-red-900">
+                                삭제
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            
+            viewHistoryItem(id) {
+                const history = this.getHistory();
+                const item = history.find(h => h.id == id);
+                if (!item) return;
+                
+                // Set workflow data and switch to dashboard
+                this.state.workflowData = item;
+                this.switchTab('dashboard');
+                this.updateDashboard();
+            }
+            
+            deleteHistoryItem(id) {
+                if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+                
+                let history = this.getHistory();
+                history = history.filter(h => h.id != id);
+                
+                localStorage.setItem('aiboa-history', JSON.stringify(history));
+                this.state.analysisHistory = history;
+                this.loadHistoryTable();
+                this.showAlert('항목이 삭제되었습니다.', 'success');
+            }
+            
+            exportHistory() {
+                const history = this.getHistory();
+                if (history.length === 0) {
+                    this.showAlert('내보낼 히스토리가 없습니다.', 'warning');
+                    return;
+                }
+                
+                const dataStr = JSON.stringify(history, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `aiboa-history-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                this.showAlert('히스토리가 내보내기되었습니다.', 'success');
+            }
+            
+            clearHistory() {
+                localStorage.removeItem('aiboa-history');
+                this.state.analysisHistory = [];
+                this.loadHistoryTable();
+                this.updateDashboard();
+                this.showAlert('히스토리가 삭제되었습니다.', 'success');
+            }
+            
+            // Export Functions
+            downloadTranscript() {
+                if (!this.state.lastTranscript) {
+                    this.showAlert('다운로드할 전사 결과가 없습니다.', 'warning');
+                    return;
+                }
+                
+                const data = JSON.stringify(this.state.lastTranscript, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `transcript-${Date.now()}.json`;
+                link.click();
+            }
+            
+            downloadAnalysis() {
+                if (!this.state.lastAnalysis) {
+                    this.showAlert('다운로드할 분석 결과가 없습니다.', 'warning');
+                    return;
+                }
+                
+                const data = JSON.stringify(this.state.lastAnalysis, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `analysis-${Date.now()}.json`;
+                link.click();
+            }
+        }
+        
+        // Initialize the application
+        window.addEventListener('DOMContentLoaded', () => {
+            window.app = new AIBOAApp();
+        });
+        
+        // Global functions for onclick handlers
+        function switchTab(tabName) {
+            if (window.app) {
+                window.app.switchTab(tabName);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIBOA - AI 교육 분석 플랫폼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-menu {
+            position: relative;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            color: #333;
+            min-width: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 1000;
+        }
+        
+        .dropdown.show {
+            display: block;
+        }
+        
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .dropdown-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* Navigation */
+        .nav-container {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .nav {
+            display: flex;
+            padding: 0 20px;
+        }
+        
+        .nav-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item:hover {
+            background: #e9ecef;
+        }
+        
+        .nav-item.active {
+            background: white;
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        /* Content Area */
+        .content {
+            padding: 30px;
+            min-height: calc(100vh - 140px);
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        /* Login Page */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .card-body {
+            padding: 20px;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Progress Bars */
+        .progress {
+            background: #e9ecef;
+            border-radius: 50px;
+            height: 8px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            border-radius: 50px;
+            transition: width 0.5s ease;
+        }
+        
+        /* Workflow Interface */
+        .workflow-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .workflow-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .workflow-steps::before {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 50px;
+            right: 50px;
+            height: 2px;
+            background: #dee2e6;
+            z-index: 1;
+        }
+        
+        .workflow-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .step-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 10px;
+        }
+        
+        .step-circle.active {
+            background: #667eea;
+        }
+        
+        .step-circle.completed {
+            background: #28a745;
+        }
+        
+        .step-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        /* Results Display */
+        .result-section {
+            margin-top: 30px;
+        }
+        
+        .analysis-charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        /* Loading States */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Alerts */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .alert-info {
+            background: #cce7ff;
+            border-color: #007bff;
+            color: #004085;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .nav {
+                flex-direction: column;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .workflow-steps {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .workflow-steps::before {
+                display: none;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+        }
+        
+        /* Hide elements initially */
+        .main-app {
+            display: none;
+        }
+        
+        .login-page {
+            display: block;
+        }
+        
+        /* Show main app when logged in */
+        body.logged-in .main-app {
+            display: block;
+        }
+        
+        body.logged-in .login-page {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div class="login-page">
+        <div class="login-container">
+            <div class="login-box">
+                <div class="login-header">
+                    <h1>🎓 AIBOA</h1>
+                    <p>AI 기반 교육 관찰 및 분석 플랫폼</p>
+                </div>
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">이메일</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">비밀번호</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn">로그인</button>
+                </form>
+                
+                <div id="loginError" class="alert alert-error" style="display: none; margin-top: 15px;"></div>
+                
+                <div style="text-align: center; margin-top: 20px; color: #6c757d; font-size: 0.9rem;">
+                    관리자: purusil55@gmail.com / rhdwlgns85!@#<br>
+                    테스트 코치: coach.test@example.com / test123<br>
+                    테스트 사용자: user.test@example.com / test123
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Application -->
+    <div class="main-app">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">🎓 AIBOA</div>
+                <div class="user-info">
+                    <span id="userRole" class="user-role"></span>
+                    <div class="user-menu">
+                        <div class="user-avatar" id="userAvatar">U</div>
+                        <div class="dropdown" id="userDropdown">
+                            <div class="dropdown-item" onclick="showProfile()">프로필</div>
+                            <div class="dropdown-item" onclick="logout()">로그아웃</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="nav-container">
+                <div class="nav" id="mainNav">
+                    <!-- Navigation items will be populated based on user role -->
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <div class="content">
+                <!-- Dashboard Page (Common) -->
+                <div id="dashboard" class="page active">
+                    <h2>대시보드</h2>
+                    <div id="dashboardContent">
+                        <div class="loading">대시보드 데이터를 불러오는 중...</div>
+                    </div>
+                </div>
+                
+                <!-- Workflow Page (Regular Users) -->
+                <div id="workflow" class="page">
+                    <div class="workflow-container">
+                        <h2>교육 내용 분석</h2>
+                        
+                        <div class="workflow-steps">
+                            <div class="workflow-step">
+                                <div class="step-circle" id="step1">1</div>
+                                <div class="step-label">업로드</div>
+                            </div>
+                            <div class="workflow-step">
+                                <div class="step-circle" id="step2">2</div>
+                                <div class="step-label">전사</div>
+                            </div>
+                            <div class="workflow-step">
+                                <div class="step-circle" id="step3">3</div>
+                                <div class="step-label">분석</div>
+                            </div>
+                            <div class="workflow-step">
+                                <div class="step-circle" id="step4">4</div>
+                                <div class="step-label">결과</div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">교육 콘텐츠 입력</div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>입력 방법</label>
+                                    <select id="sourceType" onchange="toggleSourceInput()">
+                                        <option value="youtube">YouTube URL</option>
+                                        <option value="upload">파일 업로드</option>
+                                    </select>
+                                </div>
+                                
+                                <div id="youtubeInput" class="form-group">
+                                    <label for="youtubeUrl">YouTube URL</label>
+                                    <input type="url" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
+                                </div>
+                                
+                                <div id="fileInput" class="form-group" style="display: none;">
+                                    <label for="fileUpload">파일 선택</label>
+                                    <input type="file" id="fileUpload" accept=".mp3,.mp4,.wav,.m4a,.webm">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="language">언어</label>
+                                    <select id="language">
+                                        <option value="ko">한국어</option>
+                                        <option value="en">English</option>
+                                        <option value="auto">자동 감지</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="sessionName">세션 이름 (선택사항)</label>
+                                    <input type="text" id="sessionName" placeholder="예: 수학 수업 - 삼각함수">
+                                </div>
+                                
+                                <button class="btn" onclick="startWorkflow()" id="startBtn">분석 시작</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Display -->
+                        <div id="progressSection" class="card" style="display: none;">
+                            <div class="card-header">진행 상황</div>
+                            <div class="card-body">
+                                <div id="progressMessage">준비 중...</div>
+                                <div class="progress">
+                                    <div class="progress-bar" id="overallProgress" style="width: 0%"></div>
+                                </div>
+                                <div style="display: flex; gap: 20px; margin-top: 15px;">
+                                    <div style="flex: 1;">
+                                        <div>전사 진행률</div>
+                                        <div class="progress">
+                                            <div class="progress-bar" id="transcriptionProgress" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div>분석 진행률</div>
+                                        <div class="progress">
+                                            <div class="progress-bar" id="analysisProgress" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Results Display -->
+                        <div id="resultsSection" class="result-section" style="display: none;">
+                            <div class="card">
+                                <div class="card-header">분석 결과</div>
+                                <div class="card-body" id="analysisResults">
+                                    <!-- Results will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <div class="analysis-charts" id="analysisCharts">
+                                <!-- Charts will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- History Page (Coach/Admin) -->
+                <div id="history" class="page">
+                    <h2>분석 기록</h2>
+                    <div id="historyContent">
+                        <div class="loading">기록을 불러오는 중...</div>
+                    </div>
+                </div>
+                
+                <!-- Users Page (Admin) -->
+                <div id="users" class="page">
+                    <h2>사용자 관리</h2>
+                    <div id="usersContent">
+                        <div class="loading">사용자 데이터를 불러오는 중...</div>
+                    </div>
+                </div>
+                
+                <!-- Analytics Page (Admin) -->
+                <div id="analytics" class="page">
+                    <h2>시스템 분석</h2>
+                    <div id="analyticsContent">
+                        <div class="loading">분석 데이터를 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global state
+        let currentUser = null;
+        let authToken = null;
+        let currentWorkflow = null;
+        let progressSocket = null;
+        
+        // API Configuration
+        const API_BASE = window.location.origin;
+        const API_ENDPOINTS = {
+            auth: `${API_BASE}:8002`,
+            workflow: `${API_BASE}:8003`,
+            transcription: `${API_BASE}:8000`,
+            analysis: `${API_BASE}:8001`
+        };
+        
+        // Authentication Functions
+        async function login(email, password) {
+            try {
+                const response = await fetch(`${API_ENDPOINTS.auth}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.access_token;
+                    currentUser = data.user;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    
+                    document.body.classList.add('logged-in');
+                    initializeApp();
+                    return true;
+                } else {
+                    throw new Error(data.message || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                throw error;
+            }
+        }
+        
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            
+            document.body.classList.remove('logged-in');
+            
+            // Close WebSocket if open
+            if (progressSocket) {
+                progressSocket.close();
+                progressSocket = null;
+            }
+            
+            // Reset UI
+            document.getElementById('loginForm').reset();
+            document.getElementById('loginError').style.display = 'none';
+        }
+        
+        function checkAuthentication() {
+            const storedToken = localStorage.getItem('authToken');
+            const storedUser = localStorage.getItem('currentUser');
+            
+            if (storedToken && storedUser) {
+                authToken = storedToken;
+                currentUser = JSON.parse(storedUser);
+                document.body.classList.add('logged-in');
+                initializeApp();
+            }
+        }
+        
+        // App Initialization
+        function initializeApp() {
+            updateUserInterface();
+            setupNavigation();
+            loadDashboard();
+        }
+        
+        function updateUserInterface() {
+            if (!currentUser) return;
+            
+            // Update user info in header
+            document.getElementById('userRole').textContent = getRoleDisplayName(currentUser.role);
+            document.getElementById('userAvatar').textContent = currentUser.full_name.charAt(0).toUpperCase();
+        }
+        
+        function getRoleDisplayName(role) {
+            const roleNames = {
+                'admin': '관리자',
+                'coach': '코치',
+                'regular_user': '사용자'
+            };
+            return roleNames[role] || role;
+        }
+        
+        function setupNavigation() {
+            const nav = document.getElementById('mainNav');
+            nav.innerHTML = '';
+            
+            // Base navigation items for all users
+            const navItems = [
+                { id: 'dashboard', label: '대시보드', roles: ['admin', 'coach', 'regular_user'] }
+            ];
+            
+            // Role-specific navigation
+            if (currentUser.role === 'regular_user') {
+                navItems.push({ id: 'workflow', label: '분석하기', roles: ['regular_user'] });
+            }
+            
+            if (currentUser.role === 'coach' || currentUser.role === 'admin') {
+                navItems.push(
+                    { id: 'workflow', label: '분석하기', roles: ['coach', 'admin'] },
+                    { id: 'history', label: '분석 기록', roles: ['coach', 'admin'] }
+                );
+            }
+            
+            if (currentUser.role === 'admin') {
+                navItems.push(
+                    { id: 'users', label: '사용자 관리', roles: ['admin'] },
+                    { id: 'analytics', label: '시스템 분석', roles: ['admin'] }
+                );
+            }
+            
+            // Create navigation items
+            navItems.forEach(item => {
+                if (item.roles.includes(currentUser.role)) {
+                    const navItem = document.createElement('div');
+                    navItem.className = 'nav-item';
+                    navItem.textContent = item.label;
+                    navItem.onclick = () => showPage(item.id);
+                    nav.appendChild(navItem);
+                }
+            });
+            
+            // Set first item as active
+            if (nav.firstChild) {
+                nav.firstChild.classList.add('active');
+            }
+        }
+        
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            document.getElementById(pageId).classList.add('active');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Load page content
+            switch (pageId) {
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'history':
+                    loadHistory();
+                    break;
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'analytics':
+                    loadAnalytics();
+                    break;
+            }
+        }
+        
+        // Dashboard Functions
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_ENDPOINTS.auth}/dashboard/summary`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderDashboard(data);
+                } else {
+                    throw new Error('Failed to load dashboard');
+                }
+            } catch (error) {
+                console.error('Dashboard error:', error);
+                document.getElementById('dashboardContent').innerHTML = 
+                    '<div class="alert alert-error">대시보드를 불러올 수 없습니다.</div>';
+            }
+        }
+        
+        function renderDashboard(data) {
+            const content = document.getElementById('dashboardContent');
+            
+            if (data.user_type === 'regular_user') {
+                content.innerHTML = renderRegularUserDashboard(data);
+            } else if (data.user_type === 'coach') {
+                content.innerHTML = renderCoachDashboard(data);
+            } else if (data.user_type === 'admin') {
+                content.innerHTML = renderAdminDashboard(data);
+            }
+        }
+        
+        function renderRegularUserDashboard(data) {
+            return `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.summary.total_analyses}</div>
+                        <div class="stat-label">총 분석 수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.summary.avg_analysis_score ? data.summary.avg_analysis_score.toFixed(1) : 'N/A'}</div>
+                        <div class="stat-label">평균 점수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.quick_stats.this_week_analyses}</div>
+                        <div class="stat-label">이번 주 분석</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.quick_stats.in_progress_workflows}</div>
+                        <div class="stat-label">진행 중인 작업</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">최근 분석 결과</div>
+                    <div class="card-body">
+                        ${renderRecentAnalyses(data.recent_analyses)}
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">진행률 차트</div>
+                    <div class="card-body">
+                        ${renderProgressChart(data.progress_chart)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderCoachDashboard(data) {
+            return `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.summary.total_analyses}</div>
+                        <div class="stat-label">총 분석 수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.summary.avg_analysis_score ? data.summary.avg_analysis_score.toFixed(1) : 'N/A'}</div>
+                        <div class="stat-label">평균 점수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.comparisons.system_avg_score ? data.comparisons.system_avg_score.toFixed(1) : 'N/A'}</div>
+                        <div class="stat-label">시스템 평균</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.achievements.length}</div>
+                        <div class="stat-label">달성한 뱃지</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="card">
+                        <div class="card-header">성과 트렌드</div>
+                        <div class="card-body">
+                            ${renderPerformanceTrends(data.performance_trends)}
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">레벨 분포</div>
+                        <div class="card-body">
+                            ${renderLevelDistribution(data.level_distribution)}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">개인화 추천</div>
+                    <div class="card-body">
+                        ${renderRecommendations(data.recommendations)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderAdminDashboard(data) {
+            return `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.system_stats.total_users}</div>
+                        <div class="stat-label">총 사용자</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.system_stats.active_users}</div>
+                        <div class="stat-label">활성 사용자</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.system_stats.total_analyses}</div>
+                        <div class="stat-label">총 분석 수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.system_stats.failed_jobs_30d}</div>
+                        <div class="stat-label">실패한 작업 (30일)</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="card">
+                        <div class="card-header">사용자 등록 트렌드</div>
+                        <div class="card-body">
+                            ${renderUserRegistrationTrend(data.trends.user_registrations)}
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">역할별 분포</div>
+                        <div class="card-body">
+                            ${renderRoleDistribution(data.role_distribution)}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">시스템 알림</div>
+                    <div class="card-body">
+                        ${renderSystemAlerts(data.alerts)}
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">최근 활동</div>
+                    <div class="card-body">
+                        ${renderRecentActivities(data.recent_activities)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Workflow Functions
+        function toggleSourceInput() {
+            const sourceType = document.getElementById('sourceType').value;
+            const youtubeInput = document.getElementById('youtubeInput');
+            const fileInput = document.getElementById('fileInput');
+            
+            if (sourceType === 'youtube') {
+                youtubeInput.style.display = 'block';
+                fileInput.style.display = 'none';
+            } else {
+                youtubeInput.style.display = 'none';
+                fileInput.style.display = 'block';
+            }
+        }
+        
+        async function startWorkflow() {
+            const sourceType = document.getElementById('sourceType').value;
+            const language = document.getElementById('language').value;
+            const sessionName = document.getElementById('sessionName').value;
+            
+            let workflowData = {
+                source_type: sourceType,
+                language: language,
+                analysis_framework: 'cbil'
+            };
+            
+            if (sessionName) {
+                workflowData.session_name = sessionName;
+            }
+            
+            if (sourceType === 'youtube') {
+                const url = document.getElementById('youtubeUrl').value;
+                if (!url) {
+                    alert('YouTube URL을 입력해주세요.');
+                    return;
+                }
+                workflowData.source_url = url;
+            } else {
+                const fileInput = document.getElementById('fileUpload');
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert('파일을 선택해주세요.');
+                    return;
+                }
+                
+                // Convert file to base64
+                const base64 = await fileToBase64(file);
+                workflowData.file_data = base64;
+                workflowData.filename = file.name;
+            }
+            
+            try {
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('startBtn').textContent = '시작 중...';
+                
+                const response = await fetch(`${API_ENDPOINTS.workflow}/api/workflow/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(workflowData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentWorkflow = data;
+                    showProgressSection();
+                    connectToProgressSocket(data.workflow_id);
+                    updateWorkflowSteps(1);
+                } else {
+                    throw new Error(data.message || 'Workflow creation failed');
+                }
+            } catch (error) {
+                console.error('Workflow error:', error);
+                alert('워크플로우 시작에 실패했습니다: ' + error.message);
+            } finally {
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').textContent = '분석 시작';
+            }
+        }
+        
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+        
+        function showProgressSection() {
+            document.getElementById('progressSection').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+        
+        function connectToProgressSocket(workflowId) {
+            if (progressSocket) {
+                progressSocket.close();
+            }
+            
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsHost = window.location.hostname;
+            const wsPort = '8003'; // Workflow service port
+            
+            progressSocket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}/ws/progress/${workflowId}`);
+            
+            progressSocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                updateProgress(data);
+            };
+            
+            progressSocket.onclose = function() {
+                console.log('Progress socket closed');
+            };
+            
+            progressSocket.onerror = function(error) {
+                console.error('Progress socket error:', error);
+            };
+        }
+        
+        function updateProgress(data) {
+            if (data.type === 'progress_update') {
+                document.getElementById('progressMessage').textContent = data.message;
+                document.getElementById('overallProgress').style.width = data.progress_percentage + '%';
+                document.getElementById('transcriptionProgress').style.width = data.transcription_progress + '%';
+                document.getElementById('analysisProgress').style.width = data.analysis_progress + '%';
+                
+                // Update workflow steps
+                if (data.status === 'transcribing') {
+                    updateWorkflowSteps(2);
+                } else if (data.status === 'analyzing') {
+                    updateWorkflowSteps(3);
+                } else if (data.status === 'completed') {
+                    updateWorkflowSteps(4);
+                    loadWorkflowResults();
+                }
+            }
+        }
+        
+        function updateWorkflowSteps(activeStep) {
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+                
+                if (i < activeStep) {
+                    step.classList.add('completed');
+                } else if (i === activeStep) {
+                    step.classList.add('active');
+                }
+            }
+        }
+        
+        async function loadWorkflowResults() {
+            if (!currentWorkflow) return;
+            
+            try {
+                const response = await fetch(`${API_ENDPOINTS.workflow}/api/workflow/${currentWorkflow.workflow_id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayResults(data);
+                } else {
+                    throw new Error('Failed to load results');
+                }
+            } catch (error) {
+                console.error('Results loading error:', error);
+            }
+        }
+        
+        function displayResults(workflow) {
+            document.getElementById('resultsSection').style.display = 'block';
+            
+            const resultsContainer = document.getElementById('analysisResults');
+            const chartsContainer = document.getElementById('analysisCharts');
+            
+            if (workflow.analysis_result) {
+                const analysis = workflow.analysis_result;
+                
+                resultsContainer.innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">${analysis.overall_score ? analysis.overall_score.toFixed(1) : 'N/A'}</div>
+                            <div class="stat-label">전체 점수</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${analysis.primary_level || 'N/A'}</div>
+                            <div class="stat-label">주요 수준</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${analysis.word_count || 0}</div>
+                            <div class="stat-label">단어 수</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${analysis.processing_time_seconds ? analysis.processing_time_seconds.toFixed(1) : 'N/A'}초</div>
+                            <div class="stat-label">처리 시간</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4>상세 분석 결과</h4>
+                        <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto;">${JSON.stringify(analysis.detailed_results, null, 2)}</pre>
+                    </div>
+                `;
+                
+                chartsContainer.innerHTML = `
+                    <div class="chart-container">
+                        <h4>언어 복잡도 분석</h4>
+                        <p>분석 프레임워크: ${analysis.framework}</p>
+                        <p>문장 수: ${analysis.sentence_count || 0}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Helper render functions
+        function renderRecentAnalyses(analyses) {
+            if (!analyses || analyses.length === 0) {
+                return '<p>최근 분석 결과가 없습니다.</p>';
+            }
+            
+            return `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>날짜</th>
+                                <th>점수</th>
+                                <th>주요 레벨</th>
+                                <th>단어 수</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${analyses.map(analysis => `
+                                <tr>
+                                    <td>${new Date(analysis.created_at).toLocaleDateString()}</td>
+                                    <td>${analysis.overall_score ? analysis.overall_score.toFixed(1) : 'N/A'}</td>
+                                    <td>${analysis.primary_level || 'N/A'}</td>
+                                    <td>${analysis.word_count || 0}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        function renderProgressChart(chartData) {
+            if (!chartData || chartData.length === 0) {
+                return '<p>차트 데이터가 없습니다.</p>';
+            }
+            
+            return '<p>진행률 차트 (구현 예정)</p>';
+        }
+        
+        function renderPerformanceTrends(trends) {
+            return '<p>성과 트렌드 차트 (구현 예정)</p>';
+        }
+        
+        function renderLevelDistribution(distribution) {
+            if (!distribution || distribution.length === 0) {
+                return '<p>레벨 분포 데이터가 없습니다.</p>';
+            }
+            
+            return distribution.map(item => `
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>${item.level}</span>
+                        <span>${item.count}</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: ${(item.count / Math.max(...distribution.map(d => d.count))) * 100}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderRecommendations(recommendations) {
+            if (!recommendations || recommendations.length === 0) {
+                return '<p>추천 사항이 없습니다.</p>';
+            }
+            
+            return recommendations.map(rec => `
+                <div class="alert alert-info">
+                    <strong>${rec.title}</strong><br>
+                    ${rec.description}
+                </div>
+            `).join('');
+        }
+        
+        function renderUserRegistrationTrend(trends) {
+            return '<p>사용자 등록 트렌드 차트 (구현 예정)</p>';
+        }
+        
+        function renderRoleDistribution(distribution) {
+            if (!distribution || distribution.length === 0) {
+                return '<p>역할 분포 데이터가 없습니다.</p>';
+            }
+            
+            return distribution.map(item => `
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>${getRoleDisplayName(item.role)}</span>
+                        <span>${item.count}</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: ${(item.count / Math.max(...distribution.map(d => d.count))) * 100}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderSystemAlerts(alerts) {
+            if (!alerts || alerts.length === 0) {
+                return '<p>시스템 알림이 없습니다.</p>';
+            }
+            
+            return alerts.map(alert => `
+                <div class="alert alert-${alert.type}">
+                    <strong>${alert.title}</strong><br>
+                    ${alert.message}
+                </div>
+            `).join('');
+        }
+        
+        function renderRecentActivities(activities) {
+            if (!activities || activities.length === 0) {
+                return '<p>최근 활동이 없습니다.</p>';
+            }
+            
+            return `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>시간</th>
+                                <th>사용자</th>
+                                <th>활동</th>
+                                <th>IP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${activities.map(activity => `
+                                <tr>
+                                    <td>${new Date(activity.created_at).toLocaleString()}</td>
+                                    <td>사용자 ${activity.user_id}</td>
+                                    <td>${activity.action}</td>
+                                    <td>${activity.ip_address || 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // Placeholder functions for other pages
+        function loadHistory() {
+            document.getElementById('historyContent').innerHTML = '<p>분석 기록 기능을 구현 중입니다.</p>';
+        }
+        
+        function loadUsers() {
+            document.getElementById('usersContent').innerHTML = '<p>사용자 관리 기능을 구현 중입니다.</p>';
+        }
+        
+        function loadAnalytics() {
+            document.getElementById('analyticsContent').innerHTML = '<p>시스템 분석 기능을 구현 중입니다.</p>';
+        }
+        
+        function showProfile() {
+            alert('프로필 기능을 구현 중입니다.');
+        }
+        
+        // Event Handlers
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            try {
+                await login(email, password);
+                errorDiv.style.display = 'none';
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        });
+        
+        document.getElementById('userAvatar').addEventListener('click', function() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('userDropdown');
+            const avatar = document.getElementById('userAvatar');
+            
+            if (!avatar.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthentication();
+        });
+    </script>
+</body>
+</html>
