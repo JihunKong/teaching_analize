@@ -76,3 +76,19 @@ secrets/
 *.key
 *.pem
 *.cert
+
+# Large files and archives
+*.tar.gz
+*.zip
+*.rar
+
+# Docker images
+*.tar
+
+# Credentials
+credentials.json
+
+# Analysis outputs
+static/charts/
+educational_analysis.log
+integration_service.log

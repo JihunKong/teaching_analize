@@ -26,5 +26,14 @@ alembic==1.13.1
 # Audio processing
 pydub==0.25.1
 
+# Browser automation
+playwright==1.40.0
+selenium==4.15.0
+webdriver-manager==4.0.2
+
+# Background processing and job queue
+redis==5.0.1
+celery==5.3.4
+
 # Additional utilities
 pathlib

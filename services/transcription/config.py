@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     
     # API Keys
     OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+    YOUTUBE_API_KEY: Optional[str] = Field(default=None, env="YOUTUBE_API_KEY")
     API_KEY: Optional[str] = Field(default="test-api-key", env="API_KEY")
     
     # File Storage

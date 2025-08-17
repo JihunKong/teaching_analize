@@ -1,0 +1,25 @@
+{
+  "webshare_proxies": [
+    {
+      "host": "proxy.webshare.io",
+      "port": 80,
+      "username": "YOUR_USERNAME",
+      "password": "YOUR_PASSWORD",
+      "protocol": "http"
+    }
+  ],
+  "backup_proxies": [
+    {
+      "host": "rotating-residential.proxymesh.com",
+      "port": 31280,
+      "username": "demo",
+      "password": "demo",
+      "protocol": "http"
+    }
+  ],
+  "settings": {
+    "rotation_interval": 300,
+    "max_retries": 3,
+    "health_check_url": "https://httpbin.org/ip"
+  }
+}

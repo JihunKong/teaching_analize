@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  youtube-transcript-selenium:
+    build:
+      context: .
+      dockerfile: Dockerfile.selenium
+    container_name: youtube-transcript-selenium
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # Main API port
+    environment:
+      # API Configuration
+      - API_TITLE=YouTube Transcript Service (Selenium)
+      - API_VERSION=1.0.0
+      - ENVIRONMENT=production
+      
+      # Chrome configuration for Selenium
+      - CHROME_BIN=/usr/bin/google-chrome
+      - DISPLAY=:99
+      
+      # YouTube API (optional)
+      - YOUTUBE_API_KEY=AIzaSyDzZscl_XRZFi0nH3K45enXLObE1m9XBRw
+      
+      # Rate limiting
+      - MAX_REQUESTS_PER_HOUR=60
+      - MIN_INTERVAL_SECONDS=2
+      
+      # File storage
+      - UPLOAD_DIR=/app/data/uploads
+      - TRANSCRIPT_DIR=/app/data/transcripts
+      
+    volumes:
+      # Data persistence
+      - ./data:/app/data
+      - ./logs:/app/logs
+      
+      # Development: mount source code for live reload
+      - ./mvp_api.py:/app/mvp_api.py
+      - ./youtube_handler.py:/app/youtube_handler.py
+      - ./browser_youtube_handler.py:/app/browser_youtube_handler.py
+      - ./selenium_youtube_scraper.py:/app/selenium_youtube_scraper.py
+      - ./cookie_manager.py:/app/cookie_manager.py
+      - ./rate_limiter.py:/app/rate_limiter.py
+      - ./proxy_manager.py:/app/proxy_manager.py
+      - ./youtube_oauth.py:/app/youtube_oauth.py
+      - ./oauth_web_handler.py:/app/oauth_web_handler.py
+      - ./youtube_data_api.py:/app/youtube_data_api.py
+      - ./oauth_setup_guide.md:/app/oauth_setup_guide.md
+      - ./credentials.json:/app/credentials.json
+      
+    # Chrome needs additional capabilities
+    cap_add:
+      - SYS_ADMIN
+    
+    # Shared memory for Chrome
+    shm_size: 2gb
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 30s  # Increased for Chrome startup
+      retries: 3
+      start_period: 60s  # Increased for Chrome installation
+    
+    # Resource limits for server deployment
+    deploy:
+      resources:
+        limits:
+          memory: 4G  # Increased for Chrome
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+networks:
+  default:
+    name: youtube-transcript-selenium-network

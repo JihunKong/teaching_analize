@@ -10,9 +10,13 @@ from typing import Optional
 import logging
 import asyncio
 import aiohttp
+from enhanced_youtube_wrapper import EnhancedYouTubeHandler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialize Enhanced YouTube handler
+youtube_handler = EnhancedYouTubeHandler()
 
 app = FastAPI(
     title="AIBOA Transcription Service - Working Version",
@@ -64,98 +68,40 @@ async def health_check():
     }
 
 async def extract_youtube_captions_real(url: str, language: str = "ko") -> Optional[dict]:
-    """Extract actual captions from YouTube video using yt-dlp"""
+    """Extract actual captions from YouTube video using Enhanced YouTube Handler"""
     try:
-        ydl_opts = {
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitleslangs': [language, 'ko', 'en'],
-            'quiet': True,
-            'no_warnings': True,
-            'skip_download': True
-        }
+        # Use the enhanced YouTube handler with all anti-detection measures
+        caption_text = await asyncio.to_thread(youtube_handler.get_captions_enhanced, url, language)
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = await asyncio.to_thread(ydl.extract_info, url, download=False)
-            
-            title = info.get('title', 'Unknown')
-            duration = info.get('duration', 0)
-            
-            # Try to get subtitles
-            subtitles = info.get('subtitles', {})
-            auto_captions = info.get('automatic_captions', {})
-            
-            # Look for Korean subtitles first, then English
-            caption_data = None
-            caption_type = "manual"
-            
-            for lang in [language, 'ko', 'en']:
-                if lang in subtitles:
-                    caption_data = subtitles[lang]
-                    caption_type = "manual"
-                    break
-                elif lang in auto_captions:
-                    caption_data = auto_captions[lang]
-                    caption_type = "auto"
-                    break
-            
-            if not caption_data:
-                return None
-            
-            # Download and parse the first available caption
-            if caption_data:
-                caption_url = caption_data[0].get('url')
-                if caption_url:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(caption_url) as response:
-                            caption_text_raw = await response.text()
-                    
-                    # Parse the caption text (simplified - just extract text)
-                    import xml.etree.ElementTree as ET
-                    try:
-                        root = ET.fromstring(caption_text_raw)
-                        texts = []
-                        for elem in root.iter():
-                            if elem.text:
-                                texts.append(elem.text.strip())
-                        
-                        full_text = " ".join([t for t in texts if t])
-                        
-                        return {
-                            "text": full_text,
-                            "language": language,
-                            "duration": f"{duration//3600:02d}:{(duration%3600)//60:02d}:{duration%60:02d}",
-                            "title": title,
-                            "source": f"youtube_{caption_type}_captions",
-                            "segments": [
-                                {
-                                    "start": 0.0,
-                                    "end": min(30.0, duration),
-                                    "text": f"제목: {title}"
-                                },
-                                {
-                                    "start": 30.0,
-                                    "end": duration,
-                                    "text": full_text[:500] + "..." if len(full_text) > 500 else full_text
-                                }
-                            ]
+        if caption_text:
+            # Get basic video info for metadata
+            try:
+                video_id = youtube_handler._extract_video_id(url)
+                
+                return {
+                    "text": caption_text,
+                    "language": language,
+                    "source": "youtube_transcript_api",
+                    "video_id": video_id,
+                    "url": url,
+                    "segments": [
+                        {
+                            "start": 0.0,
+                            "end": 10.0,
+                            "text": caption_text[:200] + "..." if len(caption_text) > 200 else caption_text
                         }
-                    except Exception as e:
-                        logger.error(f"Failed to parse caption XML: {e}")
-                        return {
-                            "text": f"자막을 성공적으로 추출했지만 파싱 중 오류가 발생했습니다. 제목: {title}",
-                            "language": language,
-                            "title": title,
-                            "source": f"youtube_{caption_type}_captions_partial",
-                            "duration": f"{duration//3600:02d}:{(duration%3600)//60:02d}:{duration%60:02d}",
-                            "segments": [
-                                {
-                                    "start": 0.0,
-                                    "end": duration,
-                                    "text": f"제목: {title} - 자막 추출 성공 (파싱 부분 오류)"
-                                }
-                            ]
-                        }
+                    ]
+                }
+            except Exception as e:
+                logger.error(f"Failed to extract video metadata: {e}")
+                return {
+                    "text": caption_text,
+                    "language": language,
+                    "source": "youtube_transcript_api",
+                    "url": url
+                }
+        
+        return None
                         
     except Exception as e:
         logger.error(f"Caption extraction failed: {e}")
