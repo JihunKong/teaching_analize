@@ -9,16 +9,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, desc
 
-from ..database import get_database
-from ..models import (
+from database import get_database
+from models import (
     User, TranscriptionJob, AnalysisResult, WorkflowSession, 
     UserActivityLog, UsageStatistic
 )
-from ..schemas import (
+from schemas import (
     UserDashboardSummary, CoachDashboard, AdminDashboard,
     SystemStatistics, BaseResponse
 )
-from .auth import get_current_user
+from routes.auth import get_current_user
 import logging
 
 logger = logging.getLogger(__name__)

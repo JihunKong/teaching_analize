@@ -7,7 +7,7 @@ from typing import Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
-from .models import Base
+from models import Base
 import logging
 
 logger = logging.getLogger(__name__)
@@ -84,8 +84,8 @@ def init_database():
     
     Creates tables and inserts initial roles and admin user
     """
-    from .models import UserRole, User
-    from .utils.auth import get_password_hash
+    from models import UserRole, User
+    from utils.auth import get_password_hash
     
     try:
         # Create tables first
@@ -310,4 +310,4 @@ def health_check() -> dict:
 
 
 # Import User model here to avoid circular imports
-from .models import User
+from models import User

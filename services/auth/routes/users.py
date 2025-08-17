@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
-from ..database import get_database
-from ..models import User, UserRole, UserActivityLog
-from ..schemas import (
+from database import get_database
+from models import User, UserRole, UserActivityLog
+from schemas import (
     User as UserSchema, UserCreate, UserUpdate, UserListResponse,
     BaseResponse, PaginationParams, FilterParams
 )
-from ..utils.auth import get_password_hash, check_user_permissions
-from .auth import get_current_user, log_user_activity
+from utils.auth import get_password_hash, check_user_permissions
+from routes.auth import get_current_user, log_user_activity
 import logging
 
 logger = logging.getLogger(__name__)
@@ -324,7 +324,7 @@ async def delete_user(
         user.updated_at = datetime.utcnow()
         
         # Revoke all user sessions
-        from ..models import UserSession
+        from models import UserSession
         db.query(UserSession).filter(
             UserSession.user_id == user_id,
             UserSession.is_active == True
@@ -470,7 +470,7 @@ async def admin_reset_password(
         user.updated_at = datetime.utcnow()
         
         # Revoke all user sessions (force re-login)
-        from ..models import UserSession
+        from models import UserSession
         db.query(UserSession).filter(
             UserSession.user_id == user_id,
             UserSession.is_active == True

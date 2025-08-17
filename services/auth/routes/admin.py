@@ -8,18 +8,18 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 
-from ..database import get_database
-from ..models import (
+from database import get_database
+from models import (
     User, UserRole, UserActivityLog, UsageStatistic, 
     TranscriptionJob, AnalysisResult, WorkflowSession
 )
-from ..schemas import (
+from schemas import (
     AdminUserCreate, User as UserSchema, UserListResponse, 
     SystemStatistics, UserActivityLogList, BaseResponse,
     PaginationParams, FilterParams
 )
-from ..utils.auth import get_password_hash
-from .auth import get_current_user, log_user_activity
+from utils.auth import get_password_hash
+from routes.auth import get_current_user, log_user_activity
 import logging
 
 logger = logging.getLogger(__name__)
@@ -609,7 +609,7 @@ async def cleanup_system(
         
         if not dry_run:
             # Cleanup old inactive sessions
-            from ..models import UserSession, PasswordResetToken
+            from models import UserSession, PasswordResetToken
             
             # Delete old inactive sessions
             old_sessions = db.query(UserSession).filter(
@@ -656,7 +656,7 @@ async def cleanup_system(
         
         else:
             # Dry run - just count
-            from ..models import UserSession, PasswordResetToken
+            from models import UserSession, PasswordResetToken
             
             cleanup_stats["old_sessions"] = db.query(UserSession).filter(
                 and_(

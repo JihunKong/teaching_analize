@@ -8,19 +8,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from ..database import get_database
-from ..models import User, UserSession, PasswordResetToken, UserActivityLog
-from ..schemas import (
+from database import get_database
+from models import User, UserSession, PasswordResetToken, UserActivityLog
+from schemas import (
     LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse,
     LogoutRequest, PasswordChangeRequest, ForgotPasswordRequest, 
     ResetPasswordRequest, User as UserSchema, BaseResponse, ErrorResponse
 )
-from ..utils.auth import (
+from utils.auth import (
     verify_password, create_user_tokens, verify_token, 
     generate_password_reset_token, get_password_hash,
     generate_session_token
 )
-from ..config import settings
+from config import settings
 import logging
 
 logger = logging.getLogger(__name__)

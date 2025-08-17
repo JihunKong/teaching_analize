@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIBOA - AI 교육 분석 플랫폼</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>AIBOA - AI 교육 분석 플랫폼 (Updated: 2025-08-17)</title>
     <style>
         * {
             margin: 0;
@@ -709,6 +712,10 @@
     </div>
     
     <script>
+        // Clear any existing auth data on fresh load
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        
         // Global state
         let currentUser = null;
         let authToken = null;
@@ -718,10 +725,10 @@
         // API Configuration
         const API_BASE = window.location.origin;
         const API_ENDPOINTS = {
-            auth: `${API_BASE}:8002`,
-            workflow: `${API_BASE}:8003`,
-            transcription: `${API_BASE}:8000`,
-            analysis: `${API_BASE}:8001`
+            auth: `${API_BASE}`,
+            workflow: `${API_BASE}`,
+            transcription: `${API_BASE}`,
+            analysis: `${API_BASE}`
         };
         
         // Authentication Functions
@@ -774,15 +781,41 @@
             document.getElementById('loginError').style.display = 'none';
         }
         
-        function checkAuthentication() {
+        async function checkAuthentication() {
             const storedToken = localStorage.getItem('authToken');
             const storedUser = localStorage.getItem('currentUser');
             
             if (storedToken && storedUser) {
-                authToken = storedToken;
-                currentUser = JSON.parse(storedUser);
-                document.body.classList.add('logged-in');
-                initializeApp();
+                try {
+                    // Verify token with server
+                    const response = await fetch(`${API_ENDPOINTS.auth}/auth/verify`, {
+                        headers: {
+                            'Authorization': `Bearer ${storedToken}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const userData = await response.json();
+                        authToken = storedToken;
+                        currentUser = userData.user || JSON.parse(storedUser);
+                        document.body.classList.add('logged-in');
+                        initializeApp();
+                    } else {
+                        // Token invalid, clear storage and show login
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('currentUser');
+                        document.body.classList.remove('logged-in');
+                    }
+                } catch (error) {
+                    // Server not available or error, show login
+                    console.warn('Auth server not available, clearing stored auth');
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                    document.body.classList.remove('logged-in');
+                }
+            } else {
+                // No stored auth, ensure login page is shown
+                document.body.classList.remove('logged-in');
             }
         }
         

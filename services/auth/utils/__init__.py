@@ -2,7 +2,7 @@
 Utils package for AIBOA Authentication Service
 """
 
-from .auth import *
+from utils.auth import *
 
 __all__ = [
     "get_password_hash",
