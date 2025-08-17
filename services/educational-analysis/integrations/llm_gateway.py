@@ -36,22 +36,22 @@ class LLMGateway:
         
         self._setup_clients()
         
-        # 모델 설정
+        # 모델 설정 (Solar 우선)
         self.model_config = {
             "teaching_coach": {
-                "primary": "gpt-4o-mini",  # 비용 효율적
-                "fallback": "claude-3-haiku-20240307",
-                "solar": "solar-1-mini-chat"
+                "primary": "solar-1-mini-chat",  # Solar 우선
+                "fallback": "gpt-4o-mini",
+                "embedding": "solar-embedding-1-large"
             },
             "dialogue_patterns": {
-                "primary": "gpt-3.5-turbo",  # 정량 분석용
-                "fallback": "claude-3-haiku-20240307",
-                "solar": "solar-1-mini-chat"
+                "primary": "solar-1-mini-chat",  # Solar 우선
+                "fallback": "gpt-3.5-turbo",
+                "embedding": "solar-embedding-1-large"
             },
             "cbil_evaluation": {
-                "primary": "gpt-4o-mini",  # 교육 이론 분석용
-                "fallback": "claude-3-sonnet-20240229",
-                "solar": "solar-1-mini-chat"
+                "primary": "solar-1-mini-chat",  # Solar 우선
+                "fallback": "gpt-4o-mini", 
+                "embedding": "solar-embedding-1-large"
             }
         }
         
@@ -102,29 +102,30 @@ class LLMGateway:
         """
         models = self.model_config.get(analysis_type, self.model_config["teaching_coach"])
         
-        # 1차 시도: Primary 모델
+        # 1차 시도: Solar API (Primary)
         try:
-            if self.openai_client and models["primary"].startswith("gpt"):
-                logger.info(f"🤖 Using OpenAI {models['primary']}")
-                return await self._call_openai(prompt, models["primary"], max_tokens, temperature)
+            if self.solar_api_key and models["primary"].startswith("solar"):
+                logger.info(f"🌞 Using Solar {models['primary']} (Primary)")
+                return await self._call_solar(prompt, models["primary"], max_tokens, temperature)
         except Exception as e:
-            logger.warning(f"⚠️ OpenAI primary failed: {e}")
+            logger.warning(f"⚠️ Solar primary failed: {e}")
         
-        # 2차 시도: Fallback 모델
+        # 2차 시도: OpenAI Fallback
         try:
-            if self.anthropic_client and models["fallback"].startswith("claude"):
-                logger.info(f"🤖 Using Anthropic {models['fallback']}")
-                return await self._call_anthropic(prompt, models["fallback"], max_tokens)
+            if self.openai_client and models["fallback"].startswith("gpt"):
+                logger.info(f"🤖 Using OpenAI {models['fallback']} (Fallback)")
+                return await self._call_openai(prompt, models["fallback"], max_tokens, temperature)
         except Exception as e:
-            logger.warning(f"⚠️ Anthropic fallback failed: {e}")
+            logger.warning(f"⚠️ OpenAI fallback failed: {e}")
         
-        # 3차 시도: Solar API
+        # 3차 시도: 최종 대안 (다른 모델들)
         try:
+            # Solar가 실패했다면 다른 Solar 모델 시도
             if self.solar_api_key:
-                logger.info(f"🤖 Using Solar {models['solar']}")
-                return await self._call_solar(prompt, models["solar"], max_tokens, temperature)
+                logger.info("🌞 Trying alternative Solar model")
+                return await self._call_solar(prompt, "solar-1-mini-chat", max_tokens, temperature)
         except Exception as e:
-            logger.warning(f"⚠️ Solar fallback failed: {e}")
+            logger.warning(f"⚠️ Alternative Solar failed: {e}")
         
         # 모든 API 실패시
         raise Exception("All LLM APIs failed")
@@ -205,7 +206,8 @@ class LLMGateway:
         max_tokens: int,
         temperature: float
     ) -> str:
-        """Solar API 호출"""
+        """Solar API 호출 (2025 최신 버전)"""
+        # Solar API 최신 엔드포인트
         url = "https://api.upstage.ai/v1/solar/chat/completions"
         
         headers = {
@@ -213,33 +215,49 @@ class LLMGateway:
             "Content-Type": "application/json"
         }
         
+        # Solar Pro 2 또는 Solar Mini 모델 사용
+        solar_model = model if model.startswith("solar-") else "solar-1-mini-chat"
+        
         data = {
-            "model": model,
+            "model": solar_model,
             "messages": [
                 {
                     "role": "system",
-                    "content": "당신은 교육 분석 전문가입니다. 주어진 프롬프트에 따라 정확하고 상세한 분석을 제공하세요."
+                    "content": "당신은 한국어 교육 분석 전문가입니다. 교육학 이론을 바탕으로 정확하고 체계적인 분석을 제공하세요. 응답은 한국어로 작성해주세요."
                 },
                 {
                     "role": "user",
                     "content": prompt
                 }
             ],
-            "max_tokens": max_tokens,
-            "temperature": temperature
+            "max_tokens": min(max_tokens, 4096),  # Solar 모델 제한
+            "temperature": temperature,
+            "stream": False
         }
         
         for attempt in range(self.max_retries):
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(url, headers=headers, json=data, timeout=60) as response:
+                timeout = aiohttp.ClientTimeout(total=120)  # Solar은 더 긴 응답 시간 필요
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.post(url, headers=headers, json=data) as response:
                         if response.status == 200:
                             result = await response.json()
-                            return result["choices"][0]["message"]["content"].strip()
+                            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                            if content:
+                                return content.strip()
+                            else:
+                                raise Exception("Empty response from Solar API")
                         else:
                             error_text = await response.text()
+                            logger.error(f"Solar API error {response.status}: {error_text}")
                             raise Exception(f"Solar API error {response.status}: {error_text}")
                             
+            except asyncio.TimeoutError:
+                logger.warning(f"Solar attempt {attempt + 1} timed out")
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay * (attempt + 1))
+                else:
+                    raise Exception("Solar API timeout")
             except Exception as e:
                 logger.warning(f"Solar attempt {attempt + 1} failed: {e}")
                 if attempt < self.max_retries - 1:
