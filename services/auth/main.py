@@ -17,10 +17,10 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 import uvicorn
 
-from .config import settings, validate_configuration
-from .database import get_database, init_database, health_check
-from .schemas import ErrorResponse
-from .models import User
+from config import settings, validate_configuration
+from database import get_database, init_database, health_check
+from schemas import ErrorResponse
+from models import User
 
 # Configure logging
 logging.basicConfig(
@@ -170,7 +170,7 @@ async def health_check_endpoint():
 @app.get("/health/detailed", tags=["Health"])
 async def detailed_health_check():
     """Detailed health check endpoint"""
-    from .database import get_database_info
+    from database import get_database_info
     
     try:
         db_health = health_check()
@@ -209,7 +209,7 @@ async def detailed_health_check():
 
 
 # Authentication routes
-from .routes import auth, users, admin, dashboard
+from routes import auth, users, admin, dashboard
 
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
