@@ -52,7 +52,7 @@ class User(Base):
     created_by = Column(Integer, ForeignKey("users.id"))
     profile_image_url = Column(Text)
     preferences = Column(JSONB, default={})
-    meta_data = Column(JSONB, default={})
+    metadata = Column("metadata", JSONB, default={})
     
     # Relationships
     role_ref = relationship("UserRole", back_populates="users")
@@ -131,7 +131,7 @@ class TranscriptionJob(Base):
     file_size = Column(BigInteger)
     duration_seconds = Column(Integer)
     transcript_text = Column(Text)
-    meta_data = Column(JSONB, default={})
+    metadata = Column("metadata", JSONB, default={})
     error_message = Column(Text)
     created_at = Column(DateTime, default=func.now())
     started_at = Column(DateTime)
@@ -165,7 +165,7 @@ class AnalysisResult(Base):
     created_at = Column(DateTime, default=func.now())
     is_public = Column(Boolean, default=False)
     shared_with = Column(JSONB, default=[])
-    meta_data = Column(JSONB, default={})
+    metadata = Column("metadata", JSONB, default={})
     
     # Relationships
     user = relationship("User")
@@ -191,7 +191,7 @@ class WorkflowSession(Base):
     created_at = Column(DateTime, default=func.now())
     started_at = Column(DateTime)
     completed_at = Column(DateTime)
-    meta_data = Column(JSONB, default={})
+    metadata = Column("metadata", JSONB, default={})
     error_details = Column(Text)
     
     # Relationships
@@ -249,7 +249,7 @@ class UsageStatistic(Base):
     aggregation_period = Column(String(20), nullable=False)  # 'daily', 'weekly', 'monthly'
     period_start = Column(DateTime, nullable=False)
     period_end = Column(DateTime, nullable=False)
-    meta_data = Column(JSONB, default={})
+    metadata = Column("metadata", JSONB, default={})
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
