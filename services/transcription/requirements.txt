@@ -5,11 +5,6 @@ pydantic-settings==2.1.0
 python-dotenv==1.0.0
 python-multipart==0.0.6
 
-# YouTube and media processing
-yt-dlp==2023.12.30
-youtube-transcript-api==0.6.1
-ffmpeg-python==0.2.0
-
 # HTTP requests and async support
 aiohttp==3.9.0
 requests==2.31.0
@@ -26,8 +21,7 @@ alembic==1.13.1
 # Audio processing
 pydub==0.25.1
 
-# Browser automation
-playwright==1.40.0
+# Browser automation for web scraping ONLY
 selenium==4.15.0
 webdriver-manager==4.0.2
 

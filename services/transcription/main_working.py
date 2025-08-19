@@ -157,29 +157,26 @@ async def process_youtube_real(job_id: str, url: str, language: str, prefer_capt
             logger.info("Attempting browser script scraping...")
             result = await extract_youtube_captions_real(url, language)
             
-        # If no transcript from scraping, try audio transcription
-        if not result:
-            logger.info("No transcript scraped, attempting audio transcription...")
-            result = await transcribe_with_openai_real(url, language)
+        # BROWSER SCRAPING ONLY - NO FALLBACK TO AUDIO/YT-DLP
+        # Only use browser scraping - no other methods allowed
             
-        # Final fallback with detailed error info
+        # If browser scraping fails, return error immediately - NO OTHER METHODS ALLOWED
         if not result:
             result = {
-                "text": f"브라우저 크롤링 처리 시도 완료 - URL: {url}\n\n처리 단계:\n1. YouTube 페이지 로드: 시도됨\n2. 브라우저 스크립트 크롤링: 시도됨 (스크립트 없음 또는 접근 제한)\n3. OpenAI Whisper API: 준비됨 (실제 오디오 다운로드 필요)\n\n상태: 스크립트 없는 영상이거나 일시적 접근 제한",
+                "text": "브라우저 스크래핑 실패: 이 영상은 자동 생성된 자막이 없거나 접근이 제한되었습니다. YouTube에서 수동으로 자막을 확인해주세요.",
                 "language": language,
-                "source": "browser_scraping_attempted",
-                "error": "Browser scraping attempted but no transcript found",
+                "source": "browser_scraping_failed",
+                "error": "Browser scraping failed - no automatic captions available",
                 "processing_steps": [
-                    "YouTube page load attempted",
-                    "Browser script scraping attempted", 
-                    "OpenAI Whisper API available",
-                    "Audio download needed for full transcription"
+                    "Browser scraping attempted",
+                    "No automatic captions found",
+                    "Manual transcript verification needed"
                 ],
                 "segments": [
                     {
                         "start": 0.0,
                         "end": 5.0,
-                        "text": "브라우저 크롤링 처리 시도 완료 - 제한적 접근"
+                        "text": "브라우저 스크래핑 실패 - 자막 없음"
                     }
                 ]
             }
