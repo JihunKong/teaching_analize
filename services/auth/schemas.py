@@ -69,6 +69,11 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str = Field(..., min_length=2, max_length=255)
     role: str = Field(default="regular_user", max_length=50)
+    school: Optional[str] = Field(None, max_length=255)
+    subject: Optional[str] = Field(None, max_length=100)
+    grade_level: Optional[str] = Field(None, max_length=50)
+    role_description: Optional[str] = None
+    privacy_consent: bool = False
 
 
 class UserCreate(UserBase):
@@ -86,6 +91,11 @@ class UserUpdate(BaseModel):
     email_verified: Optional[bool] = None
     profile_image_url: Optional[str] = None
     preferences: Optional[Dict[str, Any]] = None
+    school: Optional[str] = Field(None, max_length=255)
+    subject: Optional[str] = Field(None, max_length=100)
+    grade_level: Optional[str] = Field(None, max_length=50)
+    role_description: Optional[str] = None
+    privacy_consent: Optional[bool] = None
 
 
 class UserProfile(BaseModel):
@@ -109,6 +119,7 @@ class User(UserBase):
     login_count: int = 0
     profile_image_url: Optional[str] = None
     preferences: Dict[str, Any] = Field(default_factory=dict)
+    created_by_admin: bool = False
 
 
 class UserWithRole(User):
@@ -220,10 +231,28 @@ class UserSessionList(BaseResponse):
 # Admin Schemas
 # ============================================
 
+class TeacherRegister(BaseModel):
+    """Schema for teacher self-registration"""
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=100)
+    full_name: str = Field(..., min_length=2, max_length=255)
+    school: str = Field(..., min_length=1, max_length=255)
+    subject: str = Field(..., min_length=1, max_length=100)
+    grade_level: str = Field(..., min_length=1, max_length=50)
+    role_description: str = Field(..., min_length=1)
+    privacy_consent: bool = Field(..., description="Privacy consent is required")
+
+    def model_validate(self, values):
+        if not values.get('privacy_consent'):
+            raise ValueError('Privacy consent is required for registration')
+        return values
+
+
 class AdminUserCreate(UserCreate):
     """Schema for admin user creation"""
     created_by: Optional[int] = None
     send_email: bool = True
+    created_by_admin: bool = True
 
 
 class SystemStatistics(BaseModel):

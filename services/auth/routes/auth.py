@@ -13,7 +13,8 @@ from models import User, UserSession, PasswordResetToken, UserActivityLog
 from schemas import (
     LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse,
     LogoutRequest, PasswordChangeRequest, ForgotPasswordRequest, 
-    ResetPasswordRequest, User as UserSchema, BaseResponse, ErrorResponse
+    ResetPasswordRequest, User as UserSchema, BaseResponse, ErrorResponse,
+    TeacherRegister
 )
 from utils.auth import (
     verify_password, create_user_tokens, verify_token, 
@@ -334,6 +335,87 @@ async def logout(
         )
 
 
+@router.post("/register", response_model=UserSchema)
+async def register_teacher(
+    registration_data: TeacherRegister,
+    request: Request,
+    db: Session = Depends(get_database)
+):
+    """
+    Teacher self-registration endpoint
+    
+    Allows teachers to register themselves with additional profile information
+    """
+    try:
+        # Check if self-registration is allowed
+        if not settings.allow_self_registration:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Self-registration is not allowed"
+            )
+        
+        # Check if email already exists
+        existing_user = db.query(User).filter(User.email == registration_data.email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Validate privacy consent
+        if not registration_data.privacy_consent:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Privacy consent is required for registration"
+            )
+        
+        # Create new user
+        new_user = User(
+            email=registration_data.email,
+            password_hash=get_password_hash(registration_data.password),
+            full_name=registration_data.full_name,
+            role="regular_user",  # Teachers are regular users
+            status="active",
+            email_verified=settings.auto_verify_email,
+            school=registration_data.school,
+            subject=registration_data.subject,
+            grade_level=registration_data.grade_level,
+            role_description=registration_data.role_description,
+            privacy_consent=registration_data.privacy_consent,
+            created_by_admin=False
+        )
+        
+        db.add(new_user)
+        db.flush()  # Get the user ID
+        
+        # Log registration
+        log_user_activity(
+            db, new_user.id, "USER_REGISTERED", 
+            {
+                "registration_type": "self_registration",
+                "school": registration_data.school,
+                "subject": registration_data.subject,
+                "grade_level": registration_data.grade_level
+            },
+            request
+        )
+        
+        db.commit()
+        
+        logger.info(f"New teacher registered: {new_user.email}")
+        
+        return UserSchema.from_orm(new_user)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed due to internal error"
+        )
+
+
 @router.get("/profile", response_model=UserSchema)
 async def get_profile(current_user: User = Depends(get_current_user)):
     """
@@ -642,3 +724,11 @@ async def revoke_session(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to revoke session"
         )
+
+
+@router.get("/verify", response_model=UserSchema)
+async def verify_token(current_user: User = Depends(get_current_user)):
+    """
+    Verify JWT token and return user info
+    """
+    return UserSchema.from_orm(current_user)

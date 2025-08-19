@@ -4,7 +4,7 @@ Database configuration and connection management for AIBOA Authentication Servic
 
 import os
 from typing import Generator
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 from models import Base
@@ -183,7 +183,7 @@ def check_database_connection() -> bool:
     """
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         logger.info("Database connection successful")
         return True
     except Exception as e:
@@ -200,14 +200,14 @@ def get_database_info() -> dict:
     """
     try:
         with engine.connect() as conn:
-            result = conn.execute("""
+            result = conn.execute(text("""
                 SELECT 
                     version() as version,
                     current_database() as database_name,
                     current_user as user_name,
                     inet_server_addr() as server_addr,
                     inet_server_port() as server_port
-            """)
+            """))
             row = result.fetchone()
             
             return {
