@@ -727,7 +727,7 @@ async def revoke_session(
 
 
 @router.get("/verify", response_model=UserSchema)
-async def verify_token(current_user: User = Depends(get_current_user)):
+async def verify_user_token(current_user: User = Depends(get_current_user)):
     """
     Verify JWT token and return user info
     """
