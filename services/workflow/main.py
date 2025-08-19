@@ -135,9 +135,11 @@ except ImportError:
     
     # Import fallback implementations
     try:
-        from services import WorkflowService, ProgressTracker, HealthService
+        from services_standalone import WorkflowService, ProgressTracker, HealthService
+        logger.info("✅ Using standalone services implementation")
     except ImportError:
         # Last resort fallback - should not happen
+        logger.warning("⚠️ Using minimal fallback WorkflowService")
         class WorkflowService:
             def __init__(self):
                 self.workflows = {}
