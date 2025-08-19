@@ -32,8 +32,8 @@ services:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/aiboa
       - SECRET_KEY=aiboa-super-secret-key-for-jwt-tokens-min-32-chars
       - REDIS_URL=redis://redis:6379/0
-      - DEBUG=true
-      - CORS_ORIGINS=["http://localhost:3000", "http://3.38.107.23", "*"]
+      - DEBUG=false
+      - CORS_ORIGINS=["http://localhost:3000", "http://3.38.107.23"]
     ports:
       - "8002:8002"
     depends_on:
@@ -70,8 +70,8 @@ services:
       - TRANSCRIPTION_SERVICE_URL=http://host.docker.internal:8000
       - ANALYSIS_SERVICE_URL=http://analysis-service:8001
       - REDIS_URL=redis://redis:6379/0
-      - DEBUG=true
-      - CORS_ORIGINS=["http://localhost:3000", "http://3.38.107.23", "*"]
+      - DEBUG=false
+      - CORS_ORIGINS=["http://localhost:3000", "http://3.38.107.23"]
     ports:
       - "8003:8003"
     depends_on:
