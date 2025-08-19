@@ -68,6 +68,7 @@ services:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/aiboa
       - AUTH_SERVICE_URL=http://auth-service:8002
       - TRANSCRIPTION_SERVICE_URL=http://172.26.6.249:8000
+      - TRANSCRIPTION_API_KEY=test-api-key
       - ANALYSIS_SERVICE_URL=http://analysis-service:8001
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=false
