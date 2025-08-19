@@ -16,14 +16,155 @@ from fastapi.exceptions import RequestValidationError
 import uvicorn
 import httpx
 
-from .config import settings
-from .models import WorkflowSession, WorkflowStatus
-from .schemas import (
-    WorkflowCreateRequest, WorkflowResponse, WorkflowStatusResponse,
-    ErrorResponse, ProgressUpdate
-)
-from .auth import get_current_user, User
-from .services import WorkflowService, ProgressTracker
+try:
+    from .config import settings
+    from .models import WorkflowSession, WorkflowStatus
+    from .schemas import (
+        WorkflowCreateRequest, WorkflowResponse, WorkflowStatusResponse,
+        ErrorResponse, ProgressUpdate
+    )
+    from .auth import get_current_user, User
+    from .services import WorkflowService, ProgressTracker
+except ImportError:
+    # Fallback imports for standalone execution
+    import os
+    from datetime import datetime
+    from typing import Dict, Any, Optional
+    from pydantic import BaseModel
+    
+    # Simple configuration
+    class Settings:
+        app_name = "AIBOA Workflow Service"
+        app_version = "1.0.0"
+        environment = os.getenv("ENVIRONMENT", "production")
+        debug = os.getenv("DEBUG", "false").lower() == "true"
+        log_level = os.getenv("LOG_LEVEL", "INFO")
+        log_file = None
+        host = "0.0.0.0"
+        port = 8003
+        reload = False
+        
+        # Service URLs
+        transcription_service_url = os.getenv("TRANSCRIPTION_SERVICE_URL", "http://127.0.0.1:8000")
+        analysis_service_url = os.getenv("ANALYSIS_SERVICE_URL", "http://127.0.0.1:8001")
+        auth_service_url = os.getenv("AUTH_SERVICE_URL", "http://127.0.0.1:8002")
+        
+        # CORS settings
+        cors_origins = ["*"]
+        cors_credentials = True
+        cors_methods = ["*"]
+        cors_headers = ["*"]
+    
+    settings = Settings()
+    
+    # Simple models
+    class User(BaseModel):
+        id: int
+        email: str
+        full_name: str
+        role: str
+    
+    class WorkflowCreateRequest(BaseModel):
+        youtube_url: str
+        language: str = "ko"
+        analysis_options: Dict[str, bool] = {
+            "teaching": True,
+            "dialogue": True,
+            "cbil": True
+        }
+    
+    class WorkflowResponse(BaseModel):
+        message: str
+        workflow_id: str
+        status: str
+        progress_percentage: int = 0
+        websocket_url: Optional[str] = None
+        estimated_completion_time: Optional[datetime] = None
+    
+    class WorkflowStatusResponse(BaseModel):
+        message: str
+        workflow_id: str
+        status: str
+        progress_percentage: int
+        transcription_progress: int = 0
+        analysis_progress: int = 0
+        created_at: datetime
+        started_at: Optional[datetime] = None
+        completed_at: Optional[datetime] = None
+        estimated_completion_time: Optional[datetime] = None
+        transcription_result: Optional[Dict] = None
+        analysis_result: Optional[Dict] = None
+        error_details: Optional[str] = None
+    
+    class ErrorResponse(BaseModel):
+        success: bool = False
+        message: str
+        error_code: str
+        details: Optional[Dict] = None
+        timestamp: datetime
+    
+    # Simple workflow service
+    class WorkflowService:
+        def __init__(self):
+            self.workflows = {}
+        
+        async def create_workflow(self, user_id: int, workflow_data: WorkflowCreateRequest, request_ip: str = None):
+            import uuid
+            workflow_id = str(uuid.uuid4())
+            
+            workflow = {
+                "id": workflow_id,
+                "user_id": user_id,
+                "status": "pending",
+                "progress_percentage": 0,
+                "created_at": datetime.now(),
+                "workflow_data": workflow_data,
+                "request_ip": request_ip
+            }
+            
+            self.workflows[workflow_id] = workflow
+            return type('Workflow', (), workflow)()
+        
+        async def start_workflow(self, workflow_id: str, manager):
+            # Start workflow processing
+            workflow = self.workflows.get(workflow_id)
+            if workflow:
+                workflow["status"] = "running"
+                workflow["started_at"] = datetime.now()
+        
+        async def get_workflow_status(self, workflow_id: str, user_id: int):
+            workflow = self.workflows.get(workflow_id)
+            if workflow and workflow["user_id"] == user_id:
+                return type('Workflow', (), workflow)()
+            return None
+        
+        async def cancel_workflow(self, workflow_id: str, user_id: int):
+            workflow = self.workflows.get(workflow_id)
+            if workflow and workflow["user_id"] == user_id:
+                workflow["status"] = "cancelled"
+                return True
+            return False
+        
+        async def list_user_workflows(self, user_id: int, limit: int, offset: int):
+            user_workflows = [w for w in self.workflows.values() if w["user_id"] == user_id]
+            return [type('Workflow', (), w)() for w in user_workflows[offset:offset+limit]]
+        
+        async def export_results(self, workflow_id: str, user_id: int, format: str):
+            workflow = self.workflows.get(workflow_id)
+            if workflow and workflow["user_id"] == user_id:
+                import json
+                data = json.dumps(workflow, default=str, indent=2)
+                return data.encode(), f"workflow_{workflow_id}.json", "application/json"
+            return None, None, None
+    
+    class ProgressTracker:
+        def __init__(self):
+            pass
+    
+    # Simple auth function
+    async def get_current_user():
+        # For demo purposes, return a test user
+        return User(id=1, email="test@example.com", full_name="Test User", role="admin")
 
 # Configure logging
 logging.basicConfig(

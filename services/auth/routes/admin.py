@@ -16,7 +16,7 @@ from models import (
 from schemas import (
     AdminUserCreate, User as UserSchema, UserListResponse, 
     SystemStatistics, UserActivityLogList, BaseResponse,
-    PaginationParams, FilterParams
+    PaginationParams, FilterParams, UserUpdate
 )
 from utils.auth import get_password_hash
 from routes.auth import get_current_user, log_user_activity
@@ -71,7 +71,13 @@ async def create_user(
             role=user_data.role,
             status=user_data.status,
             email_verified=user_data.email_verified,
-            created_by=current_user.id
+            created_by=current_user.id,
+            school=user_data.school,
+            subject=user_data.subject,
+            grade_level=user_data.grade_level,
+            role_description=user_data.role_description,
+            privacy_consent=user_data.privacy_consent,
+            created_by_admin=user_data.created_by_admin
         )
         
         db.add(user)
@@ -193,6 +199,157 @@ async def admin_list_users(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve users"
+        )
+
+
+@router.put("/users/{user_id}", response_model=UserSchema)
+async def update_user(
+    user_id: int,
+    user_data: UserUpdate,
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_database)
+):
+    """
+    Update a user (admin only)
+    """
+    try:
+        # Find user
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Prevent admin from modifying themselves unless they're super admin
+        if user.id == current_user.id and user_data.role and user_data.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot change own admin role"
+            )
+        
+        # Track what changed
+        updated_fields = {}
+        
+        # Update fields
+        for field, value in user_data.dict(exclude_none=True).items():
+            if hasattr(user, field) and value is not None:
+                old_value = getattr(user, field)
+                if old_value != value:
+                    setattr(user, field, value)
+                    updated_fields[field] = {"from": old_value, "to": value}
+        
+        if updated_fields:
+            user.updated_at = datetime.utcnow()
+            
+            # Log user update
+            log_user_activity(
+                db, current_user.id, "USER_UPDATE",
+                {
+                    "updated_user_id": user.id,
+                    "updated_user_email": user.email,
+                    "updated_fields": updated_fields
+                },
+                request
+            )
+            
+            db.commit()
+            logger.info(f"User updated: {user.email} by admin {current_user.email}")
+        
+        return UserSchema.from_orm(user)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update user error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user"
+        )
+
+
+@router.delete("/users/{user_id}", response_model=BaseResponse)
+async def delete_user(
+    user_id: int,
+    request: Request,
+    permanent: bool = Query(False, description="Permanently delete user"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_database)
+):
+    """
+    Delete a user (admin only)
+    """
+    try:
+        # Find user
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Prevent admin from deleting themselves
+        if user.id == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete your own account"
+            )
+        
+        # Prevent deleting the last admin
+        if user.role == "admin":
+            admin_count = db.query(User).filter(
+                User.role == "admin",
+                User.status != "deleted"
+            ).count()
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot delete the last admin user"
+                )
+        
+        if permanent:
+            # Actually delete the user and related data
+            # First, delete related records (foreign key constraints)
+            db.query(UserActivityLog).filter(UserActivityLog.user_id == user_id).delete()
+            db.query(TranscriptionJob).filter(TranscriptionJob.user_id == user_id).delete()
+            db.query(AnalysisResult).filter(AnalysisResult.user_id == user_id).delete()
+            db.query(WorkflowSession).filter(WorkflowSession.user_id == user_id).delete()
+            
+            # Delete the user
+            db.delete(user)
+            action = "USER_PERMANENT_DELETE"
+            message = f"User permanently deleted: {user.email}"
+        else:
+            # Soft delete - just mark as deleted
+            user.status = "deleted"
+            user.updated_at = datetime.utcnow()
+            action = "USER_SOFT_DELETE"
+            message = f"User soft deleted: {user.email}"
+        
+        # Log deletion
+        log_user_activity(
+            db, current_user.id, action,
+            {
+                "deleted_user_id": user.id,
+                "deleted_user_email": user.email,
+                "permanent": permanent
+            },
+            request
+        )
+        
+        db.commit()
+        logger.info(f"User {'permanently' if permanent else 'soft'} deleted: {user.email} by admin {current_user.email}")
+        
+        return BaseResponse(message=message)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete user error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete user"
         )
 
 

@@ -524,7 +524,7 @@
         // API Configuration
         const API_BASE = window.location.origin;
         const API_ENDPOINTS = {
-            auth: `${API_BASE}/auth`,
+            auth: `${API_BASE}:8002/auth`,
             workflow: `${API_BASE}/api/workflow`,
             transcribe: `${API_BASE}/api/transcribe`,
             analyze: `${API_BASE}/api/analyze`
@@ -744,8 +744,10 @@
             
             // Get form data
             const youtubeUrl = document.getElementById('youtube-url').value;
+            const language = document.getElementById('language').value;
             const teachingAnalysis = document.getElementById('analysis-teaching').checked;
             const dialogueAnalysis = document.getElementById('analysis-dialogue').checked;
+            const cbilAnalysis = document.getElementById('analysis-cbil').checked;
             
             // Validate input
             if (!youtubeUrl) {
@@ -767,40 +769,134 @@
                 submitButton.disabled = true;
                 submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>분석 시작 중...';
                 
-                // Start workflow (for now, just show a success message)
-                showAlert('분석이 시작되었습니다. 기능 구현 중입니다.', 'info');
+                // Update progress UI
+                updateWorkflowProgress('transcription', 'progress', 'YouTube 전사 시작', 10);
+                addWorkflowLog('워크플로우 시작: ' + youtubeUrl);
                 
-                // TODO: Implement actual API call to start workflow
-                // const response = await fetch(`${API_ENDPOINTS.workflow}/start`, {
-                //     method: 'POST',
-                //     headers: {
-                //         'Content-Type': 'application/json',
-                //         'Authorization': `Bearer ${authToken}`
-                //     },
-                //     body: JSON.stringify({
-                //         youtube_url: youtubeUrl,
-                //         analysis_options: {
-                //             teaching: teachingAnalysis,
-                //             dialogue: dialogueAnalysis
-                //         }
-                //     })
-                // });
+                // Start workflow via API
+                const response = await fetch(`${API_ENDPOINTS.workflow}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        youtube_url: youtubeUrl,
+                        language: language,
+                        analysis_options: {
+                            teaching: teachingAnalysis,
+                            dialogue: dialogueAnalysis,
+                            cbil: cbilAnalysis
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showAlert('분석이 시작되었습니다!', 'success');
+                    addWorkflowLog('워크플로우 ID: ' + result.workflow_id);
+                    
+                    // Start progress monitoring
+                    currentWorkflow = result.workflow_id;
+                    monitorWorkflowProgress(result.workflow_id);
+                    
+                } else {
+                    const errorData = await response.json();
+                    showAlert('분석 시작에 실패했습니다: ' + errorData.message, 'error');
+                    addWorkflowLog('오류: ' + errorData.message);
+                }
                 
                 // Reset button state
-                setTimeout(() => {
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalText;
-                }, 2000);
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
                 
             } catch (error) {
                 console.error('Workflow start error:', error);
-                showAlert('분석 시작 중 오류가 발생했습니다.', 'error');
+                showAlert('분석 시작 중 네트워크 오류가 발생했습니다.', 'error');
+                addWorkflowLog('네트워크 오류: ' + error.message);
                 
                 // Reset button state
                 const submitButton = document.getElementById('start-workflow-btn');
                 submitButton.disabled = false;
                 submitButton.innerHTML = '<i class="fas fa-rocket mr-2"></i>분석 시작';
             }
+        }
+        
+        function updateWorkflowProgress(step, status, message, progress) {
+            const stepElement = document.querySelector(`[data-step="${step}"]`);
+            if (stepElement) {
+                const statusElement = stepElement.querySelector('.step-status');
+                const progressBar = stepElement.querySelector('.progress-fill');
+                const icon = stepElement.querySelector('.step-icon i');
+                
+                statusElement.textContent = message;
+                progressBar.style.width = progress + '%';
+                
+                if (status === 'progress') {
+                    stepElement.querySelector('.step-icon').className = 'step-icon w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center mr-3';
+                    icon.className = 'fas fa-spinner fa-spin text-white';
+                } else if (status === 'completed') {
+                    stepElement.querySelector('.step-icon').className = 'step-icon w-8 h-8 rounded-full bg-green-500 flex items-center justify-center mr-3';
+                    icon.className = 'fas fa-check text-white';
+                } else if (status === 'error') {
+                    stepElement.querySelector('.step-icon').className = 'step-icon w-8 h-8 rounded-full bg-red-500 flex items-center justify-center mr-3';
+                    icon.className = 'fas fa-times text-white';
+                }
+            }
+        }
+        
+        function addWorkflowLog(message) {
+            const logContainer = document.getElementById('workflow-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        async function monitorWorkflowProgress(workflowId) {
+            const maxAttempts = 120; // 10 minutes
+            let attempts = 0;
+            
+            const checkProgress = async () => {
+                try {
+                    const response = await fetch(`${API_ENDPOINTS.workflow}/${workflowId}/status`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const status = await response.json();
+                        addWorkflowLog(`진행률: ${status.progress_percentage}% - ${status.current_step}`);
+                        
+                        // Update UI based on status
+                        if (status.status === 'completed') {
+                            updateWorkflowProgress('visualization', 'completed', '분석 완료!', 100);
+                            showAlert('분석이 완료되었습니다!', 'success');
+                            addWorkflowLog('워크플로우 완료');
+                            return; // Stop monitoring
+                        } else if (status.status === 'failed') {
+                            updateWorkflowProgress('transcription', 'error', '분석 실패', 0);
+                            showAlert('분석이 실패했습니다: ' + status.error_details, 'error');
+                            addWorkflowLog('워크플로우 실패: ' + status.error_details);
+                            return; // Stop monitoring
+                        }
+                        
+                        // Continue monitoring if still running
+                        if (attempts < maxAttempts && (status.status === 'running' || status.status === 'pending')) {
+                            attempts++;
+                            setTimeout(checkProgress, 5000); // Check every 5 seconds
+                        }
+                    }
+                } catch (error) {
+                    console.error('Progress monitoring error:', error);
+                    addWorkflowLog('진행 상황 확인 오류: ' + error.message);
+                }
+            };
+            
+            // Start monitoring
+            setTimeout(checkProgress, 2000); // Initial delay
         }
         
         function showAlert(message, type = 'info') {

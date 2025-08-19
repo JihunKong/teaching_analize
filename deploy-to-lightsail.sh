@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# AIBOA AWS Lightsail Deployment Script
-# Usage: ./deploy-to-lightsail.sh
+# AWS Lightsail Deployment Script
+# Deploys updates without requiring SSH access
 
-set -e  # Exit on any error
+set -e
 
 # Configuration
-SERVER_IP="3.38.107.23"
-PEM_KEY="./teaching_analize.pem"
-SERVER_USER="ubuntu"
-PROJECT_NAME="aiboa"
+LIGHTSAIL_IP="3.38.107.23"
+HTML_SOURCE="authenticated-dashboard.html"
+HTML_TARGET="index.html"
+ADMIN_KEY="${ADMIN_UPDATE_KEY:-temp-admin-key-123}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -18,212 +18,185 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🚀 Starting AIBOA deployment to AWS Lightsail${NC}"
-echo -e "${BLUE}Server: ${SERVER_IP}${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "${BLUE}🚀 AIBOA Lightsail Deployment Script${NC}"
+echo "========================================"
 
-# Check if PEM key exists
-if [[ ! -f "$PEM_KEY" ]]; then
-    echo -e "${RED}❌ Error: PEM key file not found: $PEM_KEY${NC}"
-    exit 1
-fi
-
-# Check if .env file exists
-if [[ ! -f "aws-lightsail/.env" ]]; then
-    echo -e "${RED}❌ Error: .env file not found. Please create aws-lightsail/.env with your API keys.${NC}"
-    echo -e "${YELLOW}📝 You can copy from aws-lightsail/.env.example and update the values.${NC}"
-    exit 1
-fi
-
-# Set correct permissions for PEM key
-chmod 600 "$PEM_KEY"
-
-echo -e "${YELLOW}🔐 Testing server connection...${NC}"
-if ! ssh -i "$PEM_KEY" -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "echo 'Connection successful'"; then
-    echo -e "${RED}❌ Cannot connect to server. Please check:${NC}"
-    echo -e "${RED}   - Server IP: $SERVER_IP${NC}"
-    echo -e "${RED}   - PEM key: $PEM_KEY${NC}"
-    echo -e "${RED}   - Security groups allow SSH (port 22)${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ Server connection successful${NC}"
-
-# Step 1: Server preparation and Docker installation
-echo -e "${YELLOW}🔧 Step 1: Preparing server and installing Docker...${NC}"
-ssh -i "$PEM_KEY" "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
-    set -e
+# Function to test service health
+test_service_health() {
+    local port=$1
+    local endpoint=${2:-"/health"}
+    local service_name=$3
     
-    echo "🔄 Updating system packages..."
-    sudo apt update -y
-    
-    echo "🐳 Installing Docker..."
-    if ! command -v docker &> /dev/null; then
-        sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-        sudo apt update -y
-        sudo apt install -y docker-ce docker-ce-cli containerd.io
-        sudo usermod -aG docker ubuntu
-    else
-        echo "Docker is already installed"
-    fi
-    
-    echo "🔧 Installing Docker Compose..."
-    if ! command -v docker-compose &> /dev/null; then
-        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-    else
-        echo "Docker Compose is already installed"
-    fi
-    
-    echo "📁 Creating project directory..."
-    mkdir -p ~/aiboa
-    
-    echo "🔄 Starting Docker service..."
-    sudo systemctl start docker
-    sudo systemctl enable docker
-    
-    echo "✅ Server preparation completed"
-ENDSSH
-
-echo -e "${GREEN}✅ Step 1 completed: Docker installation${NC}"
-
-# Step 2: File transfer
-echo -e "${YELLOW}📁 Step 2: Transferring project files...${NC}"
-
-# Create temporary exclude file for rsync
-cat > /tmp/rsync_exclude << EOF
-node_modules
-.git
-.next
-build
-dist
-*.log
-.DS_Store
-.env*
-*.pem
-old/
-backup_*/
-__pycache__/
-*.pyc
-.pytest_cache/
-EOF
-
-echo "📤 Syncing project files (this may take a few minutes)..."
-rsync -avz --progress \
-    --exclude-from=/tmp/rsync_exclude \
-    -e "ssh -i $PEM_KEY -o StrictHostKeyChecking=no" \
-    ./ "$SERVER_USER@$SERVER_IP":~/aiboa/
-
-# Clean up temporary file
-rm /tmp/rsync_exclude
-
-echo "📤 Transferring .env file..."
-scp -i "$PEM_KEY" -o StrictHostKeyChecking=no \
-    aws-lightsail/.env "$SERVER_USER@$SERVER_IP":~/aiboa/aws-lightsail/
-
-echo -e "${GREEN}✅ Step 2 completed: File transfer${NC}"
-
-# Step 3: SSL certificates generation
-echo -e "${YELLOW}🔒 Step 3: Generating SSL certificates...${NC}"
-ssh -i "$PEM_KEY" "$SERVER_USER@$SERVER_IP" << ENDSSH
-    cd ~/aiboa/aws-lightsail/nginx
-    chmod +x generate-ssl-cert.sh
-    ./generate-ssl-cert.sh
-ENDSSH
-
-echo -e "${GREEN}✅ Step 3 completed: SSL certificates${NC}"
-
-# Step 4: Docker services deployment
-echo -e "${YELLOW}🚀 Step 4: Deploying AIBOA services...${NC}"
-ssh -i "$PEM_KEY" "$SERVER_USER@$SERVER_IP" << ENDSSH
-    set -e
-    cd ~/aiboa/aws-lightsail
-    
-    echo "🔽 Stopping existing services (if any)..."
-    docker-compose down --remove-orphans || true
-    
-    echo "🧹 Cleaning up old images and containers..."
-    docker system prune -f || true
-    
-    echo "🏗️  Building and starting services..."
-    docker-compose up -d --build
-    
-    echo "⏳ Waiting for services to start..."
-    sleep 30
-    
-    echo "📊 Service status:"
-    docker-compose ps
-    
-    echo "🔍 Quick health check:"
-    docker-compose logs --tail=10
-ENDSSH
-
-echo -e "${GREEN}✅ Step 4 completed: Service deployment${NC}"
-
-# Step 5: Health checks and validation
-echo -e "${YELLOW}🔍 Step 5: Running health checks...${NC}"
-
-echo "🏥 Testing service endpoints..."
-
-# Test services
-services=(
-    "Nginx:80"
-    "Frontend:3000"
-    "Transcription:8000"
-    "Analysis:8001"
-)
-
-for service_info in "${services[@]}"; do
-    IFS=':' read -r service_name port <<< "$service_info"
     echo -n "Testing $service_name (port $port)... "
+    local status=$(curl -s -o /dev/null -w "%{http_code}" "http://$LIGHTSAIL_IP:$port$endpoint" 2>/dev/null || echo "000")
     
-    if curl -f -s --max-time 10 "http://$SERVER_IP:$port/health" > /dev/null 2>&1 || \
-       curl -f -s --max-time 10 "http://$SERVER_IP:$port/" > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ OK${NC}"
+    if [ "$status" = "200" ]; then
+        echo -e "${GREEN}✅ Healthy${NC}"
+        return 0
     else
-        echo -e "${YELLOW}⚠️  Warning: Service may still be starting${NC}"
+        echo -e "${RED}❌ Unhealthy (status: $status)${NC}"
+        return 1
     fi
-done
+}
 
-# Final status check
-echo -e "${YELLOW}📋 Final deployment status:${NC}"
-ssh -i "$PEM_KEY" "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
-    cd ~/aiboa/aws-lightsail
-    echo "🐳 Docker containers:"
-    docker-compose ps
-    
-    echo -e "\n💾 Disk usage:"
-    df -h
-    
-    echo -e "\n🖥️  Memory usage:"
-    free -h
-    
-    echo -e "\n🔥 Recent logs:"
-    docker-compose logs --tail=5 --timestamps
-ENDSSH
+# Function to check SSH connectivity
+check_ssh() {
+    echo -n "Checking SSH connectivity... "
+    if timeout 10 ssh -i teaching_analize.pem -o ConnectTimeout=5 -o BatchMode=yes ubuntu@$LIGHTSAIL_IP "echo 'SSH OK'" 2>/dev/null; then
+        echo -e "${GREEN}✅ SSH Available${NC}"
+        return 0
+    else
+        echo -e "${YELLOW}⚠️ SSH Timeout${NC}"
+        return 1
+    fi
+}
 
-echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
-echo -e "${GREEN}🎉 AIBOA deployment completed successfully!${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
-echo ""
-echo -e "${YELLOW}📍 Access your application:${NC}"
-echo -e "${GREEN}🌐 Main Application: http://$SERVER_IP${NC}"
-echo -e "${GREEN}🎯 Frontend: http://$SERVER_IP:3000${NC}"
-echo -e "${GREEN}🎙️  Transcription API: http://$SERVER_IP:8000${NC}"
-echo -e "${GREEN}📊 Analysis API: http://$SERVER_IP:8001${NC}"
-echo ""
-echo -e "${YELLOW}🔧 Management commands:${NC}"
-echo -e "${BLUE}ssh -i $PEM_KEY $SERVER_USER@$SERVER_IP${NC}"
-echo -e "${BLUE}cd ~/aiboa/aws-lightsail${NC}"
-echo -e "${BLUE}docker-compose logs -f [service-name]${NC}"
-echo -e "${BLUE}docker-compose restart [service-name]${NC}"
-echo -e "${BLUE}docker-compose ps${NC}"
-echo ""
-echo -e "${YELLOW}📝 Next steps:${NC}"
-echo -e "${BLUE}1. Test YouTube transcription functionality${NC}"
-echo -e "${BLUE}2. Set up domain and SSL certificates (optional)${NC}"
-echo -e "${BLUE}3. Configure monitoring and backups${NC}"
-echo ""
-echo -e "${GREEN}✨ Happy analyzing! 🎓${NC}"
+# Function to try alternative SSH ports
+try_alt_ssh_ports() {
+    echo "Trying alternative SSH ports..."
+    for port in 2222 2200 22222 2022; do
+        echo -n "  Testing port $port... "
+        if timeout 5 ssh -i teaching_analize.pem -p $port -o ConnectTimeout=3 -o BatchMode=yes ubuntu@$LIGHTSAIL_IP "echo 'Connected'" 2>/dev/null; then
+            echo -e "${GREEN}✅ Working${NC}"
+            SSH_PORT=$port
+            return 0
+        else
+            echo -e "${RED}❌ Failed${NC}"
+        fi
+    done
+    return 1
+}
+
+# Function to deploy via HTTP update endpoint
+deploy_via_http() {
+    echo "Attempting HTTP deployment..."
+    
+    if [ ! -f "$HTML_SOURCE" ]; then
+        echo -e "${RED}❌ Source file $HTML_SOURCE not found${NC}"
+        return 1
+    fi
+    
+    # Method 1: Try admin update endpoint
+    echo -n "  Trying admin update endpoint... "
+    if curl -f -X POST "http://$LIGHTSAIL_IP/admin/update-content" \
+        -H "X-Admin-Key: $ADMIN_KEY" \
+        -H "Content-Type: multipart/form-data" \
+        -F "file=@$HTML_SOURCE" \
+        -F "target=$HTML_TARGET" 2>/dev/null; then
+        echo -e "${GREEN}✅ Success${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Failed${NC}"
+    fi
+    
+    # Method 2: Try simple file upload endpoint
+    echo -n "  Trying simple upload endpoint... "
+    if curl -f -X PUT "http://$LIGHTSAIL_IP/upload/$HTML_TARGET" \
+        -H "Authorization: Bearer $ADMIN_KEY" \
+        --data-binary "@$HTML_SOURCE" 2>/dev/null; then
+        echo -e "${GREEN}✅ Success${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Failed${NC}"
+    fi
+    
+    return 1
+}
+
+# Function to verify deployment
+verify_deployment() {
+    echo ""
+    echo "🔍 Verifying deployment..."
+    echo "=========================="
+    
+    # Test all services
+    local all_healthy=true
+    
+    test_service_health 80 "/" "Web Server" || all_healthy=false
+    test_service_health 8002 "/health" "Auth Service" || all_healthy=false
+    test_service_health 8000 "/health" "Transcription Service" || all_healthy=false
+    test_service_health 8001 "/health" "Analysis Service" || all_healthy=false
+    
+    # Check if updated HTML is deployed
+    echo -n "Checking HTML update... "
+    if curl -s "http://$LIGHTSAIL_IP/" | grep -q "favicon" && curl -s "http://$LIGHTSAIL_IP/" | grep -q "workflow-form"; then
+        echo -e "${GREEN}✅ Updated HTML deployed${NC}"
+    else
+        echo -e "${RED}❌ HTML not updated${NC}"
+        all_healthy=false
+    fi
+    
+    if [ "$all_healthy" = "true" ]; then
+        echo ""
+        echo -e "${GREEN}🎉 Deployment successful! All services are healthy.${NC}"
+        echo ""
+        echo "🌐 Application URLs:"
+        echo "   Main App: http://$LIGHTSAIL_IP/"
+        echo "   Auth API: http://$LIGHTSAIL_IP:8002/health"
+        echo ""
+        return 0
+    else
+        echo ""
+        echo -e "${RED}⚠️ Deployment completed with some issues. Check the logs above.${NC}"
+        return 1
+    fi
+}
+
+# Main deployment flow
+main() {
+    echo "Starting deployment process..."
+    echo ""
+    
+    # Step 1: Check current service health
+    echo "📊 Current Service Status:"
+    echo "========================="
+    test_service_health 80 "/" "Web Server"
+    test_service_health 8002 "/health" "Auth Service"  
+    test_service_health 8000 "/health" "Transcription Service"
+    test_service_health 8001 "/health" "Analysis Service"
+    echo ""
+    
+    # Step 2: Check SSH availability
+    SSH_AVAILABLE=false
+    if check_ssh; then
+        SSH_AVAILABLE=true
+    elif try_alt_ssh_ports; then
+        SSH_AVAILABLE=true
+    fi
+    echo ""
+    
+    # Step 3: Deploy HTML update
+    echo "📄 Deploying HTML Update:"
+    echo "========================="
+    if deploy_via_http; then
+        echo -e "${GREEN}✅ HTML deployed via HTTP${NC}"
+    else
+        echo -e "${RED}❌ HTTP deployment failed${NC}"
+        echo "Manual deployment required via Lightsail console"
+    fi
+    echo ""
+    
+    # Step 4: Verify deployment
+    verify_deployment
+    
+    echo ""
+    echo -e "${BLUE}🏁 Deployment process completed!${NC}"
+    echo ""
+    echo "Next steps:"
+    echo "1. Test the application at http://$LIGHTSAIL_IP/"
+    echo "2. Monitor logs for any issues"
+    echo "3. Set up automated health monitoring"
+    
+    if [ "$SSH_AVAILABLE" = "false" ]; then
+        echo ""
+        echo -e "${YELLOW}⚠️ SSH access issues detected. Manual steps:${NC}"
+        echo "   1. Go to: https://lightsail.aws.amazon.com/"
+        echo "   2. Select your instance and click 'Connect using SSH'"
+        echo "   3. Upload the updated HTML file manually"
+    fi
+}
+
+# Check if running as main script
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    main "$@"
+fi

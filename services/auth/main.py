@@ -101,7 +101,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             message=exc.detail,
             error_code=f"HTTP_{exc.status_code}",
             timestamp=datetime.now()
-        ).dict()
+        ).model_dump(mode='json')
     )
 
 
@@ -116,7 +116,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             error_code="VALIDATION_ERROR",
             details={"errors": exc.errors()},
             timestamp=datetime.now()
-        ).dict()
+        ).model_dump(mode='json')
     )
 
 
@@ -133,7 +133,7 @@ async def general_exception_handler(request: Request, exc: Exception):
             error_code="INTERNAL_ERROR",
             details={"error": str(exc)} if settings.debug else None,
             timestamp=datetime.now()
-        ).dict()
+        ).model_dump(mode='json')
     )
 
 
