@@ -40,9 +40,19 @@ class TranscriptionJob(BaseModel):
     error: Optional[str] = None
 
 def verify_api_key(x_api_key: str = Header(None)):
-    """Simple API key verification"""
+    """Strong API key verification - only allows internal service keys"""
     if not x_api_key:
         raise HTTPException(status_code=401, detail="API key required")
+    
+    # Only allow specific internal service API keys
+    valid_keys = [
+        "transcription-api-key-prod-2025",  # Workflow service key
+        "internal-service-key-2025"         # Internal service key
+    ]
+    
+    if x_api_key not in valid_keys:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
     return True
 
 @app.get("/")
