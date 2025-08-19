@@ -178,11 +178,11 @@ class ExternalServiceClient:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 response = await client.post(
-                    f"{settings.analysis_service_url}/api/analyze/comprehensive",
+                    f"{settings.analysis_service_url}/api/analyze/text",
                     headers={"X-API-Key": settings.analysis_api_key},
                     json={
-                        "transcript": text,
-                        "analysis_type": "comprehensive"
+                        "text": text,
+                        "metadata": {"framework": framework}
                     }
                 )
                 response.raise_for_status()
@@ -385,8 +385,8 @@ class WorkflowService:
                 )
                 
                 if status == "completed":
-                    # Extract transcription result
-                    transcript_data = status_response.get("transcript", {})
+                    # Extract transcription result - FIX: use "result" instead of "transcript"
+                    transcript_data = status_response.get("result", {})
                     logger.info(f"✅ Transcription completed: {len(transcript_data.get('text', ''))} characters")
                     return TranscriptionResult(
                         job_id=job_id,

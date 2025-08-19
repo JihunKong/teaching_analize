@@ -89,11 +89,11 @@ class ExternalServiceClient:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 response = await client.post(
-                    f"{settings.analysis_service_url}/api/analyze/comprehensive",
+                    f"{settings.analysis_service_url}/api/analyze/text",
                     headers={"X-API-Key": settings.analysis_api_key},
                     json={
-                        "transcript": text,
-                        "analysis_type": "comprehensive"
+                        "text": text,
+                        "metadata": {"framework": framework}
                     }
                 )
                 response.raise_for_status()
