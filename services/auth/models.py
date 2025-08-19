@@ -54,14 +54,6 @@ class User(Base):
     preferences = Column(JSONB, default={})
     user_metadata = Column("metadata", JSONB, default={})
     
-    # Teacher-specific fields
-    school = Column(String(255))
-    subject = Column(String(100))
-    grade_level = Column(String(50))
-    role_description = Column(Text)
-    privacy_consent = Column(Boolean, default=False)
-    created_by_admin = Column(Boolean, default=False)
-    
     # Relationships
     role_ref = relationship("UserRole", back_populates="users")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
@@ -82,13 +74,7 @@ class User(Base):
             "last_login": self.last_login.isoformat() if self.last_login else None,
             "login_count": self.login_count,
             "profile_image_url": self.profile_image_url,
-            "preferences": self.preferences or {},
-            "school": self.school,
-            "subject": self.subject,
-            "grade_level": self.grade_level,
-            "role_description": self.role_description,
-            "privacy_consent": self.privacy_consent,
-            "created_by_admin": self.created_by_admin
+            "preferences": self.preferences or {}
         }
 
 
