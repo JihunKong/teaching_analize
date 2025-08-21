@@ -1,9 +1,15 @@
 from fastapi import FastAPI, HTTPException, Header
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Dict
 import uuid
+import os
+import sys
+
+# PDF 생성기 import
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from reportlab_pdf_generator import EducationReportGenerator
 
 app = FastAPI(
     title="AIBOA Analysis Service",
@@ -180,3 +186,88 @@ async def get_statistics(x_api_key: str = Header(None)):
         "analyses_today": total_analyses,  # Simplified for MVP
         "cbil_levels": CBIL_LEVELS
     }
+
+@app.get("/api/analysis/{analysis_id}/report")
+async def generate_pdf_report(analysis_id: str, x_api_key: str = Header(None)):
+    """Generate PDF report for analysis"""
+    verify_api_key(x_api_key)
+    
+    if analysis_id not in analysis_results:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    
+    try:
+        result = analysis_results[analysis_id]
+        
+        # PDF 생성기 초기화
+        pdf_generator = EducationReportGenerator()
+        
+        # 분석 데이터 준비
+        analysis_data = {
+            'cbil_scores': {str(k): v for k, v in result.cbil_scores.items()},
+            'overall_score': result.overall_score,
+            'sentences': result.text.split('. ') if result.text else []
+        }
+        
+        # PDF 생성
+        pdf_bytes = pdf_generator.generate_pdf_report(
+            analysis_data, 
+            f"CBIL 분석 결과 - {analysis_id[:8]}"
+        )
+        
+        # PDF 응답 반환
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=aiboa_report_{analysis_id[:8]}.pdf"
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF 생성 실패: {str(e)}")
+
+@app.get("/api/reports/sample")
+async def generate_sample_report():
+    """Generate sample PDF report for testing"""
+    try:
+        # PDF 생성기 초기화
+        pdf_generator = EducationReportGenerator()
+        
+        # 샘플 데이터
+        sample_data = {
+            'cbil_scores': {
+                '1': 0.12,  # 단순 확인
+                '2': 0.18,  # 사실 회상  
+                '3': 0.28,  # 개념 설명
+                '4': 0.22,  # 분석적 사고
+                '5': 0.12,  # 종합적 이해
+                '6': 0.06,  # 평가적 판단
+                '7': 0.02   # 창의적 적용
+            },
+            'overall_score': 3.2,
+            'sentences': [
+                "오늘은 새로운 개념에 대해 학습하겠습니다.",
+                "지난 시간에 배운 내용을 기억하고 계시나요?",
+                "이번 단원의 핵심 개념은 무엇일까요?",
+                "실생활에서 어떻게 적용될 수 있을지 분석해 보겠습니다.",
+                "배운 내용을 종합해서 새로운 문제를 해결해 보겠습니다."
+            ] * 5
+        }
+        
+        # PDF 생성
+        pdf_bytes = pdf_generator.generate_pdf_report(
+            sample_data, 
+            "교육 컨설팅 샘플 분석 보고서"
+        )
+        
+        # PDF 응답 반환
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=aiboa_sample_report.pdf"
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"샘플 PDF 생성 실패: {str(e)}")
