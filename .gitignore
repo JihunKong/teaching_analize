@@ -92,3 +92,25 @@ credentials.json
 static/charts/
 educational_analysis.log
 integration_service.log
+
+# Testing artifacts and temporary files (AUTO-GENERATED - DO NOT COMMIT)
+frontend/test-results/
+frontend/playwright-report/
+frontend/test-artifacts/
+frontend/screenshots/
+frontend/videos/
+*.spec.ts
+*.test.ts
+*test.js
+TESTING_GUIDE.md
+playwright.config.*
+docker-compose.e2e.yml
+run-e2e-tests.sh
+Dockerfile.playwright
+
+# Method documentation (sensitive info)
+TRANSCRIPT_METHOD.md
+
+# Deployment scripts (contain sensitive configs)
+deploy.sh
+docker-compose.integrated.yml
