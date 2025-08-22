@@ -182,7 +182,7 @@ class ExternalServiceClient:
                     headers={"X-API-Key": settings.analysis_api_key},
                     json={
                         "text": text,
-                        "metadata": {"framework": framework}
+                        "framework": framework
                     }
                 )
                 response.raise_for_status()
@@ -430,22 +430,24 @@ class WorkflowService:
                 message=f"Analyzing... {progress}%"
             )
         
-        # Extract analysis result
-        analysis_data = response.get("analysis", {})
-        
-        logger.info(f"✅ Analysis completed with score: {analysis_data.get('overall_score')}")
+        # Extract analysis result directly from response (no nested "analysis" key)
+        logger.info(f"✅ Analysis completed with score: {response.get('overall_score')}")
         
         return AnalysisResult(
-            analysis_id=response.get("id", ""),
+            analysis_id=response.get("analysis_id", ""),
             framework=workflow.analysis_framework,
-            overall_score=analysis_data.get("overall_score"),
-            primary_level=analysis_data.get("primary_level"),
-            detailed_results=analysis_data.get("detailed_results", {}),
-            statistics=analysis_data.get("statistics", {}),
-            processing_time_seconds=analysis_data.get("processing_time_seconds"),
-            word_count=analysis_data.get("word_count"),
-            sentence_count=analysis_data.get("sentence_count"),
-            metadata=analysis_data.get("metadata", {})
+            overall_score=response.get("overall_score"),
+            primary_level=response.get("primary_level"),
+            detailed_results={
+                "cbil_scores": response.get("cbil_scores", {}),
+                "recommendations": response.get("recommendations", []),
+                "cbil_level_distribution": response.get("cbil_level_distribution", {})
+            },
+            statistics=response.get("cbil_level_distribution", {}),
+            processing_time_seconds=response.get("processing_time_seconds"),
+            word_count=response.get("word_count"),
+            sentence_count=response.get("sentence_count"),
+            metadata=response.get("metadata", {})
         )
     
     async def get_workflow_status(self, workflow_id: str, user_id: int) -> Optional[WorkflowSession]:

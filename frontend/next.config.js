@@ -4,8 +4,10 @@ const nextConfig = {
   
   // API configuration for backend integration
   async rewrites() {
-    const transcriptionUrl = process.env.TRANSCRIPTION_API_URL || 'http://transcription:8000';
-    const analysisUrl = process.env.ANALYSIS_API_URL || 'http://analysis:8001';
+    const transcriptionUrl = process.env.TRANSCRIPTION_API_URL || 'http://3.38.107.23:8000';
+    const analysisUrl = process.env.ANALYSIS_API_URL || 'http://3.38.107.23:8001';
+    const authUrl = process.env.AUTH_API_URL || 'http://3.38.107.23:8002';
+    const workflowUrl = process.env.WORKFLOW_API_URL || 'http://3.38.107.23:8003';
     
     return [
       {
@@ -24,18 +26,28 @@ const nextConfig = {
         source: '/api/statistics/:path*',
         destination: `${analysisUrl}/api/statistics/:path*`,
       },
+      {
+        source: '/api/auth/:path*',
+        destination: `${authUrl}/api/auth/:path*`,
+      },
+      {
+        source: '/api/workflow/:path*',
+        destination: `${workflowUrl}/api/workflow/:path*`,
+      },
     ];
   },
 
   // Environment variables for client-side
   env: {
-    TRANSCRIPTION_API_URL: process.env.TRANSCRIPTION_API_URL || 'http://localhost:8000',
-    ANALYSIS_API_URL: process.env.ANALYSIS_API_URL || 'http://localhost:8001',
+    TRANSCRIPTION_API_URL: process.env.TRANSCRIPTION_API_URL || 'http://3.38.107.23:8000',
+    ANALYSIS_API_URL: process.env.ANALYSIS_API_URL || 'http://3.38.107.23:8001',
+    AUTH_API_URL: process.env.AUTH_API_URL || 'http://3.38.107.23:8002',
+    WORKFLOW_API_URL: process.env.WORKFLOW_API_URL || 'http://3.38.107.23:8003',
   },
 
   // Image optimization
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', '3.38.107.23', 'youtube.com', 'img.youtube.com'],
     formats: ['image/webp', 'image/avif'],
   },
 

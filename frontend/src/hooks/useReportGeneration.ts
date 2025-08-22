@@ -278,7 +278,11 @@ export const useReportGeneration = (): UseReportGenerationReturn => {
       ...options,
       format: 'summary',
       includeCrossAnalysis: false,
-      includeCharts: false
+      includeCharts: false,
+      includeRecommendations: options.includeRecommendations ?? true,
+      language: options.language ?? 'ko',
+      theme: options.theme ?? 'light',
+      frameworks: options.frameworks ?? ['cbil', 'qta', 'sei']
     }
 
     return generateComprehensiveReport(analysisResult, metadata, reportOptions)
@@ -287,7 +291,7 @@ export const useReportGeneration = (): UseReportGenerationReturn => {
   // Delete report
   const deleteReportMutation = useMutation({
     mutationFn: async (reportId: string) => {
-      const updatedReports = generatedReports.filter(report => report.id !== reportId)
+      const updatedReports = generatedReports.filter((report: GeneratedReport) => report.id !== reportId)
       saveReportsToCache(updatedReports)
       return updatedReports
     },
@@ -302,7 +306,7 @@ export const useReportGeneration = (): UseReportGenerationReturn => {
 
   // Download report
   const downloadReport = useCallback(async (reportId: string, format: 'html' | 'pdf' = 'html') => {
-    const report = generatedReports.find(r => r.id === reportId)
+    const report = generatedReports.find((r: GeneratedReport) => r.id === reportId)
     if (!report) {
       throw new Error('보고서를 찾을 수 없습니다')
     }
@@ -352,7 +356,7 @@ export const useReportGeneration = (): UseReportGenerationReturn => {
 
   // Preview report
   const previewReport = useCallback((reportId: string) => {
-    const report = generatedReports.find(r => r.id === reportId)
+    const report = generatedReports.find((r: GeneratedReport) => r.id === reportId)
     if (!report) {
       throw new Error('보고서를 찾을 수 없습니다')
     }
@@ -366,12 +370,12 @@ export const useReportGeneration = (): UseReportGenerationReturn => {
 
   // Get report by ID
   const getReportById = useCallback((reportId: string) => {
-    return generatedReports.find(report => report.id === reportId)
+    return generatedReports.find((report: GeneratedReport) => report.id === reportId)
   }, [generatedReports])
 
   // Print report
   const printReport = useCallback((reportId: string) => {
-    const report = generatedReports.find(r => r.id === reportId)
+    const report = generatedReports.find((r: GeneratedReport) => r.id === reportId)
     if (!report) {
       throw new Error('보고서를 찾을 수 없습니다')
     }
@@ -387,7 +391,7 @@ export const useReportGeneration = (): UseReportGenerationReturn => {
 
   // Share report (generate shareable link)
   const shareReport = useCallback(async (reportId: string): Promise<string> => {
-    const report = generatedReports.find(r => r.id === reportId)
+    const report = generatedReports.find((r: GeneratedReport) => r.id === reportId)
     if (!report) {
       throw new Error('보고서를 찾을 수 없습니다')
     }

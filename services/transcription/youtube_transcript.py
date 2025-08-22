@@ -157,11 +157,26 @@ def get_youtube_transcript_with_fallback(url: str, language: str = "ko") -> Opti
     Returns:
         Dictionary with transcript text and metadata, or None if all methods fail
     """
-    # First try youtube-transcript-api
+    # Method 1: Try youtube-transcript-api (fastest)
+    logger.info("시도 1: youtube-transcript-api 사용")
     result = get_youtube_transcript(url, language)
     if result:
+        logger.info("✅ youtube-transcript-api 성공")
         return result
     
-    # If that fails, return None to let yt-dlp handle it
-    logger.info("youtube-transcript-api failed, falling back to yt-dlp")
+    # Method 2: Try HTML scraping (more reliable for blocked videos)
+    logger.info("시도 2: HTML 스크래핑 사용")
+    try:
+        from youtube_html_scraper import get_youtube_transcript_html_scraping
+        result = get_youtube_transcript_html_scraping(url, language)
+        if result:
+            logger.info("✅ HTML 스크래핑 성공")
+            return result
+    except ImportError:
+        logger.warning("HTML 스크래퍼 모듈을 찾을 수 없습니다")
+    except Exception as e:
+        logger.error(f"HTML 스크래핑 실패: {e}")
+    
+    # All methods failed
+    logger.warning("모든 전사 추출 방법 실패")
     return None

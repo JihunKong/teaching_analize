@@ -33,7 +33,7 @@ services:
       - SECRET_KEY=aiboa-super-secret-key-for-jwt-tokens-min-32-chars
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=false
-      - CORS_ORIGINS=http://localhost:3000,http://3.38.107.23,http://3.38.107.23:80,http://3.38.107.23:8002
+      - CORS_ORIGINS=http://localhost:3000,http://3.38.107.23,*
     ports:
       - "8002:8002"
     depends_on:

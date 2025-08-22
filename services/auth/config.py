@@ -5,7 +5,7 @@ Configuration settings for AIBOA Authentication Service
 import os
 from typing import Optional, List
 from pydantic_settings import BaseSettings
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -44,10 +44,10 @@ class Settings(BaseSettings):
     rate_limit_window: int = Field(default=3600, env="RATE_LIMIT_WINDOW")  # seconds
     
     # CORS
-    cors_origins: List[str] = Field(default=["*"], env="CORS_ORIGINS")
+    cors_origins: str = Field(default="*", env="CORS_ORIGINS")
     cors_credentials: bool = Field(default=True, env="CORS_CREDENTIALS")
-    cors_methods: List[str] = Field(default=["*"], env="CORS_METHODS")
-    cors_headers: List[str] = Field(default=["*"], env="CORS_HEADERS")
+    cors_methods: str = Field(default="*", env="CORS_METHODS")
+    cors_headers: str = Field(default="*", env="CORS_HEADERS")
     
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
@@ -110,35 +110,17 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         case_sensitive = False
     
-    @validator("cors_origins", pre=True)
-    def parse_cors_origins(cls, v):
-        """Parse CORS origins from string or list"""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
     
-    @validator("cors_methods", pre=True)
-    def parse_cors_methods(cls, v):
-        """Parse CORS methods from string or list"""
-        if isinstance(v, str):
-            return [method.strip() for method in v.split(",")]
-        return v
-    
-    @validator("cors_headers", pre=True)
-    def parse_cors_headers(cls, v):
-        """Parse CORS headers from string or list"""
-        if isinstance(v, str):
-            return [header.strip() for header in v.split(",")]
-        return v
-    
-    @validator("allowed_file_types", pre=True)
+    @field_validator("allowed_file_types", mode="before")
+    @classmethod
     def parse_allowed_file_types(cls, v):
         """Parse allowed file types from string or list"""
         if isinstance(v, str):
             return [file_type.strip() for file_type in v.split(",")]
         return v
     
-    @validator("log_level")
+    @field_validator("log_level")
+    @classmethod
     def validate_log_level(cls, v):
         """Validate log level"""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -146,7 +128,8 @@ class Settings(BaseSettings):
             raise ValueError(f"Log level must be one of: {valid_levels}")
         return v.upper()
     
-    @validator("log_format")
+    @field_validator("log_format")
+    @classmethod
     def validate_log_format(cls, v):
         """Validate log format"""
         valid_formats = ["json", "text"]
@@ -154,7 +137,8 @@ class Settings(BaseSettings):
             raise ValueError(f"Log format must be one of: {valid_formats}")
         return v.lower()
     
-    @validator("environment")
+    @field_validator("environment")
+    @classmethod
     def validate_environment(cls, v):
         """Validate environment"""
         valid_environments = ["development", "testing", "staging", "production"]
@@ -182,11 +166,29 @@ class Settings(BaseSettings):
     
     def get_cors_config(self) -> dict:
         """Get CORS configuration dictionary"""
+        # Parse cors_origins if it's a string
+        if isinstance(self.cors_origins, str):
+            origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        else:
+            origins = self.cors_origins
+            
+        # Parse cors_methods if it's a string
+        if isinstance(self.cors_methods, str):
+            methods = [method.strip() for method in self.cors_methods.split(",") if method.strip()]
+        else:
+            methods = self.cors_methods
+            
+        # Parse cors_headers if it's a string  
+        if isinstance(self.cors_headers, str):
+            headers = [header.strip() for header in self.cors_headers.split(",") if header.strip()]
+        else:
+            headers = self.cors_headers
+            
         return {
-            "allow_origins": self.cors_origins,
+            "allow_origins": origins,
             "allow_credentials": self.cors_credentials,
-            "allow_methods": self.cors_methods,
-            "allow_headers": self.cors_headers
+            "allow_methods": methods,
+            "allow_headers": headers
         }
     
     def get_email_config(self) -> dict:
