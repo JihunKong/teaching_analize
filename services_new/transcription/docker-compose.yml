@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Redis for job queue and caching (proven method requirement)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Transcription API service
+  transcription-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DISPLAY=:99
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - /dev/shm:/dev/shm  # Shared memory for browser automation
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery worker for async processing (proven method)
+  celery-worker:
+    build: .
+    command: celery -A celery_app worker --loglevel=info --concurrency=4 -Q transcription
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DISPLAY=:99
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - /dev/shm:/dev/shm  # Shared memory for browser automation
+    restart: unless-stopped
+    
+  # Celery beat for scheduled tasks (cleanup, monitoring)
+  celery-beat:
+    build: .
+    command: celery -A celery_app beat --loglevel=info
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery flower for monitoring (optional)
+  celery-flower:
+    build: .
+    command: celery -A celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:
