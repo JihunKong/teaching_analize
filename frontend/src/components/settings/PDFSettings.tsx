@@ -36,7 +36,6 @@ import {
   Info
 } from 'lucide-react'
 import usePDFExport from '../../hooks/usePDFExport'
-import { DEFAULT_PDF_OPTIONS, pdfExportUtils } from '../../lib/pdf-export'
 
 interface PDFExportOptions {
   format: 'A4' | 'A3' | 'Letter' | 'Legal'
@@ -46,6 +45,7 @@ interface PDFExportOptions {
   includeMetadata: boolean
   watermark?: { text: string; opacity: number }
 }
+import { DEFAULT_PDF_OPTIONS, pdfExportUtils } from '../../lib/pdf-export'
 
 export interface PDFSettingsProps {
   className?: string
@@ -260,7 +260,7 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                   <Label>페이지 크기</Label>
                   <Select
                     value={defaultOptions.format}
-                    onValueChange={(value) => setDefaultOptions((prev: any) => ({ ...prev, 'format': value })))}
+                    onValueChange={(value) => handleDefaultOptionChange('format', value as PDFExportOptions['format'])}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -294,7 +294,7 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                   <Label>품질</Label>
                   <Select
                     value={defaultOptions.quality}
-                    onValueChange={(value) => setDefaultOptions((prev: any) => ({ ...prev, 'quality': value })))}
+                    onValueChange={(value) => handleDefaultOptionChange('quality', value as PDFExportOptions['quality'])}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -363,21 +363,21 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={defaultOptions.includePageNumbers}
-                        onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'includePageNumbers': checked })))}
+                        onCheckedChange={(checked) => handleDefaultOptionChange('includePageNumbers', checked as boolean)}
                       />
                       <Label>페이지 번호 포함</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={defaultOptions.includeHeader}
-                        onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'includeHeader': checked })))}
+                        onCheckedChange={(checked) => handleDefaultOptionChange('includeHeader', checked as boolean)}
                       />
                       <Label>머리글 포함</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={defaultOptions.includeFooter}
-                        onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'includeFooter': checked })))}
+                        onCheckedChange={(checked) => handleDefaultOptionChange('includeFooter', checked as boolean)}
                       />
                       <Label>바닥글 포함</Label>
                     </div>
@@ -390,21 +390,21 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={defaultOptions.includeCharts}
-                        onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'includeCharts': checked })))}
+                        onCheckedChange={(checked) => handleDefaultOptionChange('includeCharts', checked as boolean)}
                       />
                       <Label>차트 및 그래프 포함</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={defaultOptions.koreanFont}
-                        onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'koreanFont': checked })))}
+                        onCheckedChange={(checked) => handleDefaultOptionChange('koreanFont', checked as boolean)}
                       />
                       <Label>한글 폰트 지원</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         checked={defaultOptions.breakPages}
-                        onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'breakPages': checked })))}
+                        onCheckedChange={(checked) => handleDefaultOptionChange('breakPages', checked as boolean)}
                       />
                       <Label>자동 페이지 나누기</Label>
                     </div>
@@ -418,7 +418,7 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                   <Label>기본 폰트</Label>
                   <Input
                     value={defaultOptions.fontFamily || ''}
-                    onChange={(e) => setDefaultOptions((prev: any) => ({ ...prev, 'fontFamily': e.target.value })))}
+                    onChange={(e) => handleDefaultOptionChange('fontFamily', e.target.value)}
                     placeholder="예: NanumGothic, Arial, sans-serif"
                   />
                 </div>
@@ -600,7 +600,7 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={defaultOptions.enableOptimization}
-                    onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'enableOptimization': checked })))}
+                    onCheckedChange={(checked) => handleDefaultOptionChange('enableOptimization', checked as boolean)}
                   />
                   <Label>PDF 최적화 사용</Label>
                 </div>
@@ -608,7 +608,7 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={defaultOptions.compressImages}
-                    onCheckedChange={(checked) => setDefaultOptions((prev: any) => ({ ...prev, 'compressImages': checked })))}
+                    onCheckedChange={(checked) => handleDefaultOptionChange('compressImages', checked as boolean)}
                   />
                   <Label>이미지 압축</Label>
                 </div>
@@ -618,7 +618,7 @@ const PDFSettings: React.FC<PDFSettingsProps> = ({
                 <Label>기본 DPI 설정</Label>
                 <Select
                   value={defaultOptions.dpi.toString()}
-                  onValueChange={(value) => setDefaultOptions((prev: any) => ({ ...prev, 'dpi': parseInt(value) })))}
+                  onValueChange={(value) => handleDefaultOptionChange('dpi', parseInt(value) as PDFExportOptions['dpi'])}
                 >
                   <SelectTrigger>
                     <SelectValue />
