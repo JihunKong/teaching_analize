@@ -12,10 +12,22 @@ from typing import Dict, Any, Optional, List
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 import redis
 import json
 import requests
+
+# Import report generators
+from html_report_generator import HTMLReportGenerator
+from pdf_report_generator import PDFReportGenerator, is_pdf_generation_available
+
+# Import database
+from database import (
+    get_db, store_analysis, update_framework_usage, get_research_statistics,
+    init_database, AnalysisResultDB
+)
+from sqlalchemy.orm import Session
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -238,8 +250,8 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
         framework_config = ANALYSIS_FRAMEWORKS[framework]
         prompt = framework_config["prompt"].format(text=text)
         
-        # Call Solar API with low temperature for consistency
-        analysis_result = call_solar_api(prompt, temperature=0.1)
+        # Call Solar API with temperature=0.3 for consistent analysis results
+        analysis_result = call_solar_api(prompt, temperature=0.3)
         
         # Prepare result
         result = {
@@ -253,6 +265,44 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
             "character_count": len(text),
             "word_count": len(text.split())
         }
+        
+        # Store analysis in database for research
+        try:
+            db = next(get_db())
+            
+            # Prepare database record
+            db_analysis_data = {
+                "analysis_id": job_id,
+                "framework": framework,
+                "temperature": 0.3,
+                "model_used": "solar-pro",
+                "analysis_text": analysis_result,
+                "character_count": len(text),
+                "word_count": len(text.split()),
+                "processing_time": processing_time,
+                "anonymized": True,
+                "research_approved": metadata.get("research_consent", False)
+            }
+            
+            # Add metadata if available
+            if metadata:
+                db_analysis_data.update({
+                    "teacher_name": metadata.get("teacher_name"),
+                    "subject": metadata.get("subject"),
+                    "grade_level": metadata.get("grade_level"),
+                    "school_type": metadata.get("school_type")
+                })
+            
+            # Store in database
+            store_analysis(db, db_analysis_data)
+            update_framework_usage(db, framework)
+            
+            db.close()
+            logger.info(f"Analysis {job_id} stored in database for research")
+            
+        except Exception as e:
+            logger.error(f"Failed to store analysis in database: {str(e)}")
+            # Don't fail the job if database storage fails
         
         # Success
         job_data.update({
@@ -388,6 +438,132 @@ async def analyze_transcript(
         logger.error(f"Error analyzing transcript: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+# Initialize report generators
+report_generator = HTMLReportGenerator()
+pdf_generator = PDFReportGenerator()
+
+@app.get("/api/reports/html/{job_id}", response_class=HTMLResponse)
+async def get_html_report(job_id: str):
+    """Generate HTML report for completed analysis"""
+    try:
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+        
+        job = json.loads(job_data)
+        
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+        
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+        
+        # Generate HTML report
+        html_report = report_generator.generate_html_report(job["result"])
+        return HTMLResponse(content=html_report, media_type="text/html")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating HTML report: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/reports/data/{job_id}")
+async def get_report_data(job_id: str):
+    """Get structured report data for frontend"""
+    try:
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+        
+        job = json.loads(job_data)
+        
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+        
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+        
+        result = job["result"]
+        framework = result.get("framework", "generic")
+        
+        # Extract chart data and recommendations
+        chart_data = report_generator.extract_chart_data(result.get("analysis", ""), framework)
+        recommendations = report_generator.generate_recommendations(result.get("analysis", ""), framework)
+        
+        return {
+            "analysis_id": job_id,
+            "framework": framework,
+            "framework_name": result.get("framework_name", "분석"),
+            "chart_data": chart_data,
+            "chart_config": report_generator.generate_chart_js_config(chart_data),
+            "recommendations": recommendations,
+            "analysis_text": result.get("analysis", ""),
+            "metadata": {
+                "character_count": result.get("character_count", 0),
+                "word_count": result.get("word_count", 0),
+                "created_at": result.get("created_at", "")
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting report data: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/reports/pdf/{job_id}")
+async def get_pdf_report(job_id: str):
+    """Generate and download PDF report for completed analysis"""
+    try:
+        # Check if PDF generation is available
+        if not is_pdf_generation_available():
+            raise HTTPException(
+                status_code=503, 
+                detail="PDF generation is not available. WeasyPrint is not installed."
+            )
+        
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+        
+        job = json.loads(job_data)
+        
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+        
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+        
+        # Generate PDF
+        pdf_bytes = pdf_generator.generate_pdf_report(job["result"])
+        
+        # Generate filename
+        filename = pdf_generator.generate_pdf_filename(job["result"])
+        
+        # Return PDF as download
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating PDF report: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+@app.get("/api/reports/status")
+async def get_report_capabilities():
+    """Get report generation capabilities"""
+    return {
+        "html_available": True,
+        "pdf_available": is_pdf_generation_available(),
+        "supported_formats": ["html", "pdf"] if is_pdf_generation_available() else ["html"],
+        "frameworks_supported": list(report_generator.FRAMEWORK_NAMES.keys())
+    }
+
 @app.get("/api/stats")
 async def get_stats():
     """Get service statistics"""
@@ -423,6 +599,25 @@ async def get_stats():
     except Exception as e:
         logger.error(f"Error getting stats: {str(e)}")
         return {"error": "Could not retrieve stats"}
+
+@app.get("/api/research/stats")
+async def get_research_stats():
+    """Get research and database statistics"""
+    try:
+        db = next(get_db())
+        research_stats = get_research_statistics(db)
+        db.close()
+        
+        # Add Redis stats
+        redis_keys = redis_client.keys("analysis_job:*")
+        research_stats["redis_jobs"] = len(redis_keys)
+        research_stats["timestamp"] = datetime.now().isoformat()
+        
+        return research_stats
+        
+    except Exception as e:
+        logger.error(f"Error getting research stats: {str(e)}")
+        return {"error": "Could not retrieve research statistics"}
 
 if __name__ == "__main__":
     import uvicorn

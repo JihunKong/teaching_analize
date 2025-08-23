@@ -92,26 +92,45 @@ class BrowserTranscriber:
         raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
     
     async def wait_for_video_load(self) -> bool:
-        """Wait for YouTube video to fully load"""
+        """Wait for YouTube page and video to load enough for transcript access"""
         try:
-            # Wait for the video player to be present
-            await self.page.wait_for_selector('video', timeout=30000)
+            # Wait for basic YouTube page structure to load
+            page_selectors = [
+                '#movie_player',  # Main video container
+                'video',          # Video element
+                'ytd-watch-flexy', # Watch page container
+                '#primary'        # Primary content area
+            ]
             
-            # Wait a bit more for everything to initialize
-            await asyncio.sleep(3)
+            # Try to find at least one key element that indicates the page loaded
+            for selector in page_selectors:
+                try:
+                    await self.page.wait_for_selector(selector, timeout=15000)
+                    logger.info(f"Found page element: {selector}")
+                    break
+                except PlaywrightTimeoutError:
+                    continue
+            else:
+                logger.warning("Could not find main page elements, but continuing...")
             
-            # Check if video is actually loaded
-            video_element = await self.page.query_selector('video')
-            if video_element:
-                duration = await video_element.get_attribute('duration')
-                if duration and float(duration) > 0:
-                    logger.info("Video loaded successfully")
+            # Wait for page to stabilize
+            await asyncio.sleep(5)
+            
+            # Check if we can access the page content (this is more important than video loading)
+            try:
+                page_title = await self.page.title()
+                if 'YouTube' in page_title or len(page_title) > 5:
+                    logger.info(f"YouTube page loaded with title: {page_title}")
                     return True
+            except Exception as e:
+                logger.debug(f"Could not get page title: {e}")
             
-            return False
+            # Even if video isn't fully loaded, we can try to access transcript
+            logger.info("Proceeding with transcript extraction even if video isn't fully loaded")
+            return True
             
-        except PlaywrightTimeoutError:
-            logger.error("Timeout waiting for video to load")
+        except Exception as e:
+            logger.error(f"Error waiting for page load: {e}")
             return False
     
     async def click_transcript_button(self) -> bool:
@@ -280,23 +299,21 @@ class BrowserTranscriber:
             logger.info("Waiting for transcript panel to load...")
             await asyncio.sleep(3)
             
-            # Step 3: Look for transcript segments in various possible DOM structures
+            # Step 3: Look for transcript segments using the exact DOM structure provided by user
             segment_selectors = [
-                # Modern YouTube transcript segment selectors (2024-2025)
+                # Exact selectors from user's HTML structure
+                '.segment.style-scope.ytd-transcript-segment-renderer',
+                'div.segment.style-scope.ytd-transcript-segment-renderer',
                 '.segment.ytd-transcript-segment-renderer',
                 'ytd-transcript-segment-renderer .segment',
+                
+                # Alternative exact patterns
+                '[role="button"].segment.style-scope.ytd-transcript-segment-renderer',
+                'ytd-transcript-segment-renderer div.segment',
                 '.ytd-transcript-segment-list-renderer .segment',
                 
-                # Alternative segment selectors
-                '.transcript-segment',
-                '.cue-group',
-                '[data-testid="transcript-segment"]',
-                
-                # Engagement panel transcript segments
-                '.ytd-engagement-panel-section-list-renderer .segment',
-                'ytd-transcript-body-renderer .segment',
-                
                 # Fallback selectors
+                'ytd-transcript-body-renderer .segment',
                 'ytd-transcript-renderer .segment',
             ]
             
@@ -313,12 +330,13 @@ class BrowserTranscriber:
                         
                         for segment in segments:
                             try:
-                                # Extract timestamp
+                                # Extract timestamp using exact DOM structure
                                 timestamp_selectors = [
+                                    '.segment-timestamp.style-scope.ytd-transcript-segment-renderer',
+                                    'div.segment-timestamp.style-scope.ytd-transcript-segment-renderer',
+                                    '.segment-start-offset .segment-timestamp',
                                     '.segment-timestamp',
-                                    '.timestamp', 
                                     '[class*="timestamp"]',
-                                    '.time'
                                 ]
                                 
                                 timestamp_text = ""
@@ -328,12 +346,14 @@ class BrowserTranscriber:
                                         timestamp_text = await timestamp_element.inner_text()
                                         break
                                 
-                                # Extract text content
+                                # Extract text content using exact DOM structure
                                 text_selectors = [
+                                    'yt-formatted-string.segment-text.style-scope.ytd-transcript-segment-renderer',
                                     'yt-formatted-string.segment-text',
+                                    '.segment-text.style-scope.ytd-transcript-segment-renderer',
                                     '.segment-text',
-                                    '.text',
-                                    '[class*="text"]'
+                                    'yt-formatted-string',
+                                    '[class*="segment-text"]'
                                 ]
                                 
                                 segment_text = ""
