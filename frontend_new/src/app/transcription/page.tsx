@@ -30,7 +30,7 @@ export default function TranscriptionPage() {
     setLoading(true)
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
       
       const response = await fetch(`${API_BASE}/api/transcribe/youtube`, {
         method: 'POST',
@@ -67,7 +67,7 @@ export default function TranscriptionPage() {
   }
 
   const pollJobStatus = async (jobId: string) => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
     
     const checkStatus = async () => {
       try {

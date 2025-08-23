@@ -41,7 +41,7 @@ export default function ReportsPage() {
 
   const generateSampleReport = async () => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
       
       const response = await fetch(`${API_BASE}/api/reports/generate/html`, {
         method: 'POST',
@@ -75,7 +75,7 @@ export default function ReportsPage() {
 
   const generateSummaryReport = async () => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
       
       const response = await fetch(`${API_BASE}/api/reports/generate/html`, {
         method: 'POST',

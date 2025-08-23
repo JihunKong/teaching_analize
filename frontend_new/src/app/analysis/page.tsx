@@ -63,7 +63,7 @@ export default function AnalysisPage() {
 
   const loadFrameworks = async () => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
       const response = await fetch(`${API_BASE}/api/frameworks`)
       const data = await response.json()
       
@@ -87,7 +87,7 @@ export default function AnalysisPage() {
       setLoading(true)
       
       try {
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
         
         const response = await fetch(`${API_BASE}/api/analyze/text`, {
           method: 'POST',
@@ -134,7 +134,7 @@ export default function AnalysisPage() {
     setLoading(true)
     setParallelResults({})
     
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
     
     // Start all analyses in parallel with temperature 0.3 for consistency
     const analysisPromises = frameworks.map(async (fw) => {
@@ -195,7 +195,7 @@ export default function AnalysisPage() {
   }
 
   const pollJobStatus = async (jobId: string) => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
     
     const checkStatus = async () => {
       try {
@@ -220,7 +220,7 @@ export default function AnalysisPage() {
   }
 
   const pollParallelJobStatus = async (jobId: string, framework: string) => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
     
     const checkStatus = async () => {
       try {
@@ -278,7 +278,7 @@ export default function AnalysisPage() {
     if (!job?.result) return
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://43.203.128.246'
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || ''
       
       const response = await fetch(`${API_BASE}/api/reports/generate/html`, {
         method: 'POST',

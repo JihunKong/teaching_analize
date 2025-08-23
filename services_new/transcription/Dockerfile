@@ -64,7 +64,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 RUN echo '#!/bin/bash\n\
 Xvfb :99 -screen 0 1920x1080x24 &\n\
 export DISPLAY=:99\n\
-wait\n\
+sleep 2\n\
 exec "$@"' > /app/start.sh && \
 chmod +x /app/start.sh
 
