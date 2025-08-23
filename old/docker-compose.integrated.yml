@@ -1,0 +1,271 @@
+# AIBOA Integrated Production Docker Compose
+# Unified deployment for AWS Lightsail with all services
+
+version: '3.8'
+
+services:
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: aiboa_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.production.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend/out:/usr/share/nginx/html
+      - /var/log/nginx:/var/log/nginx
+    depends_on:
+      - auth-service
+      - transcription-service
+      - analysis-service
+      - workflow-service
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Authentication Service
+  auth-service:
+    build: ./services/auth
+    container_name: aiboa_auth
+    expose:
+      - "8002"
+    environment:
+      - DATABASE_URL=postgresql://aiboa_user:${POSTGRES_PASSWORD}@postgres:5432/aiboa
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    volumes:
+      - auth_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Transcription Service
+  transcription-service:
+    build: ./services/transcription
+    container_name: aiboa_transcription
+    expose:
+      - "8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - STORAGE_PATH=/data
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://aiboa_user:${POSTGRES_PASSWORD}@postgres:5432/aiboa
+    volumes:
+      - transcription_data:/data
+      - transcription_logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Analysis Service
+  analysis-service:
+    build: ./services/analysis
+    container_name: aiboa_analysis
+    expose:
+      - "8001"
+    environment:
+      - SOLAR_API_KEY=${SOLAR_API_KEY}
+      - UPSTAGE_API_KEY=${UPSTAGE_API_KEY}
+      - STORAGE_PATH=/data
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://aiboa_user:${POSTGRES_PASSWORD}@postgres:5432/aiboa
+    volumes:
+      - analysis_data:/data
+      - analysis_logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Workflow Service
+  workflow-service:
+    build: ./services/workflow
+    container_name: aiboa_workflow
+    expose:
+      - "8003"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://aiboa_user:${POSTGRES_PASSWORD}@postgres:5432/aiboa
+      - TRANSCRIPTION_URL=http://transcription-service:8000
+      - ANALYSIS_URL=http://analysis-service:8001
+    depends_on:
+      - postgres
+      - redis
+      - transcription-service
+      - analysis-service
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    volumes:
+      - workflow_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aiboa_postgres
+    environment:
+      - POSTGRES_DB=aiboa
+      - POSTGRES_USER=aiboa_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C.UTF-8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    ports:
+      - "127.0.0.1:5432:5432"  # Only bind to localhost for security
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiboa_user -d aiboa"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: aiboa_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    ports:
+      - "127.0.0.1:6379:6379"  # Only bind to localhost for security
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker for Background Tasks
+  celery-worker:
+    build: ./services/transcription
+    container_name: aiboa_celery_worker
+    command: celery -A celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://aiboa_user:${POSTGRES_PASSWORD}@postgres:5432/aiboa
+    volumes:
+      - transcription_data:/data
+      - celery_logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "celery_app", "inspect", "ping"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # Celery Beat for Scheduled Tasks
+  celery-beat:
+    build: ./services/transcription
+    container_name: aiboa_celery_beat
+    command: celery -A celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://aiboa_user:${POSTGRES_PASSWORD}@postgres:5432/aiboa
+    volumes:
+      - celery_beat_data:/tmp
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+
+  # Flower for Celery Monitoring (Optional)
+  flower:
+    build: ./services/transcription
+    container_name: aiboa_flower
+    command: celery -A celery_app flower --port=5555
+    ports:
+      - "127.0.0.1:5555:5555"  # Only accessible from localhost
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - FLOWER_BASIC_AUTH=${FLOWER_USER}:${FLOWER_PASSWORD}
+    depends_on:
+      - redis
+      - celery-worker
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+
+networks:
+  aiboa_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  # Application Data
+  transcription_data:
+    driver: local
+  analysis_data:
+    driver: local
+  
+  # Database & Cache
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+    
+  # Logs
+  auth_logs:
+    driver: local
+  transcription_logs:
+    driver: local
+  analysis_logs:
+    driver: local
+  workflow_logs:
+    driver: local
+  celery_logs:
+    driver: local
+    
+  # Other
+  celery_beat_data:
+    driver: local

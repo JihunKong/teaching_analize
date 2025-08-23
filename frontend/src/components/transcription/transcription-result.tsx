@@ -12,8 +12,6 @@ import {
   DownloadIcon,
   PlayIcon,
   CopyIcon,
-  ChevronUpIcon,
-  ChevronDownIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -38,7 +36,6 @@ export function TranscriptionResult({
 }: TranscriptionResultProps) {
   const router = useRouter()
   const [hasAutoNavigated, setHasAutoNavigated] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
 
   // Auto-navigation logic when transcription completes
   useEffect(() => {
@@ -283,38 +280,10 @@ export function TranscriptionResult({
             )}
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-gray-500">
-                {job.result.text.length.toLocaleString()}자 • 약 {Math.ceil(job.result.text.length / 500)}분 읽기
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="h-6 px-2 text-xs"
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUpIcon className="h-3 w-3 mr-1" />
-                    접기
-                  </>
-                ) : (
-                  <>
-                    <ChevronDownIcon className="h-3 w-3 mr-1" />
-                    전체보기
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className={cn(
-              "overflow-y-auto transition-all duration-300",
-              isExpanded ? "max-h-none" : "max-h-60"
-            )}>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                {job.result.text}
-              </p>
-            </div>
+          <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+              {job.result.text}
+            </p>
           </div>
 
           {/* Segments */}

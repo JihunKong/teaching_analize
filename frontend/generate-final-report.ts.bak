@@ -1,0 +1,59 @@
+#!/usr/bin/env ts-node
+
+/**
+ * AIBOA Platform - Generate Final Validation Report
+ * Standalone script to generate comprehensive validation report
+ */
+
+import { FinalValidationReporter } from './tests/utils/final-validation-reporter';
+
+async function main() {
+  console.log('🚀 AIBOA Platform - Final Validation Report Generator');
+  console.log('================================================\n');
+
+  const resultsDir = process.argv[2] || 'test-results';
+  
+  console.log(`📂 Using results directory: ${resultsDir}`);
+  
+  const reporter = new FinalValidationReporter(resultsDir);
+  
+  try {
+    const validationResults = await reporter.generateFinalValidationReport();
+    
+    console.log('\n📊 Final Validation Results:');
+    console.log('============================');
+    console.log(`Overall Score: ${validationResults.overallScore}%`);
+    console.log(`Grade: ${validationResults.grade}`);
+    console.log(`Production Ready: ${validationResults.productionReadiness ? 'Yes' : 'No'}`);
+    console.log(`Functionality Complete: ${validationResults.functionalityComplete ? 'Yes' : 'No'}`);
+    console.log(`Recovery Ready: ${validationResults.recoveryReadiness ? 'Yes' : 'No'}`);
+    
+    console.log('\n💡 Key Recommendations:');
+    validationResults.recommendations.forEach((rec, index) => {
+      console.log(`${index + 1}. ${rec}`);
+    });
+    
+    console.log('\n✅ Final validation report generated successfully!');
+    console.log('📄 Check the following files:');
+    console.log(`   - ${resultsDir}/final-validation-report.json`);
+    console.log(`   - ${resultsDir}/final-validation-report.html`);
+    console.log(`   - ${resultsDir}/FINAL_VALIDATION_SUMMARY.md`);
+    
+    // Exit with appropriate code based on results
+    if (validationResults.productionReadiness) {
+      process.exit(0);
+    } else if (validationResults.overallScore >= 70) {
+      process.exit(1); // Minor issues
+    } else {
+      process.exit(2); // Critical issues
+    }
+    
+  } catch (error) {
+    console.error('❌ Error generating final validation report:', error);
+    process.exit(3);
+  }
+}
+
+if (require.main === module) {
+  main();
+}

@@ -3,8 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { QueryProvider } from '@/components/providers/query-provider'
 import { ToastProvider } from '@/components/providers/toast-provider'
-import { ErrorBoundary } from '@/components/error-boundary'
-import Navbar from '@/components/layout/navbar'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -53,22 +51,13 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
-        <ErrorBoundary>
-          <QueryProvider>
-            <ToastProvider>
-              <div className="min-h-screen bg-gray-50">
-                <ErrorBoundary>
-                  <Navbar />
-                </ErrorBoundary>
-                <main className="flex-1">
-                  <ErrorBoundary>
-                    {children}
-                  </ErrorBoundary>
-                </main>
-              </div>
-            </ToastProvider>
-          </QueryProvider>
-        </ErrorBoundary>
+        <QueryProvider>
+          <ToastProvider>
+            <div className="min-h-screen bg-gray-50">
+              {children}
+            </div>
+          </ToastProvider>
+        </QueryProvider>
       </body>
     </html>
   )

@@ -1,0 +1,23 @@
+# Core Requirements - Phase 2
+# Basic functionality without heavy dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database (simplified)
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# API Clients
+openai==1.6.1
+yt-dlp==2023.12.30  # Fixed: Using existing version
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+aiofiles==23.2.1
+httpx==0.25.1
+
+# Export Format
+srt==3.5.3

@@ -36,7 +36,7 @@ import {
   PDFPreview,
   BatchPDFExport
 } from '../../components/pdf'
-// import PDFSettings from '../../components/settings/PDFSettings'
+import PDFSettings from '../../components/settings/PDFSettings'
 
 // Report Templates
 import { 
@@ -426,14 +426,11 @@ const PDFDemoPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* <PDFSettings
+              <PDFSettings
                 onSettingsChange={(settings) => {
                   console.log('설정 변경:', settings)
                 }}
-              /> */}
-              <div className="p-8 text-center text-gray-500">
-                PDF 설정 컴포넌트는 일시적으로 비활성화되었습니다.
-              </div>
+              />
             </CardContent>
           </Card>
         </TabsContent>

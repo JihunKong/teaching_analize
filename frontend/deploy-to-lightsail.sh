@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 # Configuration
-SERVER_IP="3.38.107.23"
+SERVER_IP="43.203.128.246"
 PEM_KEY="./teaching_analize.pem"
 SERVER_USER="ubuntu"
 PROJECT_NAME="aiboa"

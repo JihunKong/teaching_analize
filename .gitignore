@@ -108,9 +108,34 @@ docker-compose.e2e.yml
 run-e2e-tests.sh
 Dockerfile.playwright
 
-# Method documentation (sensitive info)
-TRANSCRIPT_METHOD.md
+# AIBOA Refactored - Security Configuration
 
-# Deployment scripts (contain sensitive configs)
-deploy.sh
-docker-compose.integrated.yml
+# Core sensitive files (ALWAYS EXCLUDE)
+*.pem
+*.key
+*.cert
+.env*
+secrets/
+
+# PRESERVE ESSENTIAL DOCUMENTATION
+!TRANSCRIPT_METHOD.md
+
+# Clean architecture files (OK to include)
+docker-compose.clean.yml
+nginx.clean.conf
+services_new/
+
+# Reports and generated content
+reports/*.html
+reports/*.pdf
+!reports/sample_*
+
+# Research and analysis data
+data/research/
+data/exports/
+data/analysis/
+
+# Clean frontend build
+frontend_new/node_modules/
+frontend_new/.next/
+frontend_new/out/

@@ -4,10 +4,11 @@ const nextConfig = {
   
   // API configuration for backend integration
   async rewrites() {
-    const transcriptionUrl = process.env.TRANSCRIPTION_API_URL || 'http://3.38.107.23:8000';
-    const analysisUrl = process.env.ANALYSIS_API_URL || 'http://3.38.107.23:8001';
-    const authUrl = process.env.AUTH_API_URL || 'http://3.38.107.23:8002';
-    const workflowUrl = process.env.WORKFLOW_API_URL || 'http://3.38.107.23:8003';
+    // Use Docker service names for internal communication, fallback to new server IP
+    const transcriptionUrl = process.env.TRANSCRIPTION_API_URL || 'http://43.203.128.246:8000';
+    const analysisUrl = process.env.ANALYSIS_API_URL || 'http://43.203.128.246:8001';
+    const authUrl = process.env.AUTH_API_URL || 'http://43.203.128.246:8002';
+    const workflowUrl = process.env.WORKFLOW_API_URL || 'http://43.203.128.246:8003';
     
     return [
       {
@@ -39,15 +40,15 @@ const nextConfig = {
 
   // Environment variables for client-side
   env: {
-    TRANSCRIPTION_API_URL: process.env.TRANSCRIPTION_API_URL || 'http://3.38.107.23:8000',
-    ANALYSIS_API_URL: process.env.ANALYSIS_API_URL || 'http://3.38.107.23:8001',
-    AUTH_API_URL: process.env.AUTH_API_URL || 'http://3.38.107.23:8002',
-    WORKFLOW_API_URL: process.env.WORKFLOW_API_URL || 'http://3.38.107.23:8003',
+    TRANSCRIPTION_API_URL: process.env.TRANSCRIPTION_API_URL || 'http://43.203.128.246:8000',
+    ANALYSIS_API_URL: process.env.ANALYSIS_API_URL || 'http://43.203.128.246:8001',
+    AUTH_API_URL: process.env.AUTH_API_URL || 'http://43.203.128.246:8002',
+    WORKFLOW_API_URL: process.env.WORKFLOW_API_URL || 'http://43.203.128.246:8003',
   },
 
   // Image optimization
   images: {
-    domains: ['localhost', '3.38.107.23', 'youtube.com', 'img.youtube.com'],
+    domains: ['localhost', '3.38.107.23', '43.203.128.246', 'youtube.com', 'img.youtube.com'],
     formats: ['image/webp', 'image/avif'],
   },
 
