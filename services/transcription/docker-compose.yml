@@ -1,13 +1,11 @@
 version: '3.8'
 
 services:
-  # Redis service for Celery broker and result backend
+  # Redis for job queue and caching (proven method requirement)
   redis:
     image: redis:7-alpine
-    container_name: youtube_transcript_redis
-    restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -16,30 +14,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - transcript_network
 
-  # FastAPI application service
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.selenium
-    container_name: youtube_transcript_web
-    restart: unless-stopped
+  # Transcription API service
+  transcription-api:
+    build: .
     ports:
       - "8000:8000"
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
-      - ENVIRONMENT=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DISPLAY=:99
     depends_on:
       redis:
         condition: service_healthy
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    networks:
-      - transcript_network
+      - /dev/shm:/dev/shm  # Shared memory for browser automation
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -47,56 +37,47 @@ services:
       retries: 3
       start_period: 40s
 
-  # Celery worker service
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.selenium
-    container_name: youtube_transcript_worker
-    restart: unless-stopped
+  # Celery worker for async processing (proven method)
+  celery-worker:
+    build: .
+    command: celery -A celery_app worker --loglevel=info --concurrency=4 -Q transcription
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
-      - ENVIRONMENT=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DISPLAY=:99
     depends_on:
       redis:
         condition: service_healthy
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    command: celery -A celery_app worker --loglevel=info --concurrency=3 --queues=celery,transcript_queue
-    networks:
-      - transcript_network
-    healthcheck:
-      test: ["CMD", "celery", "-A", "celery_app", "inspect", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # Celery monitoring (optional)
-  flower:
-    build:
-      context: .
-      dockerfile: Dockerfile.selenium
-    container_name: youtube_transcript_flower
+      - /dev/shm:/dev/shm  # Shared memory for browser automation
     restart: unless-stopped
-    ports:
-      - "5555:5555"
+    
+  # Celery beat for scheduled tasks (cleanup, monitoring)
+  celery-beat:
+    build: .
+    command: celery -A celery_app beat --loglevel=info
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       redis:
         condition: service_healthy
-    command: celery -A celery_app flower --port=5555
-    networks:
-      - transcript_network
+    restart: unless-stopped
 
-networks:
-  transcript_network:
-    driver: bridge
+  # Celery flower for monitoring (optional)
+  celery-flower:
+    build: .
+    command: celery -A celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   redis_data:
-    driver: local

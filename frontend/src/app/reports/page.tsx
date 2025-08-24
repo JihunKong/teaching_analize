@@ -1,528 +1,242 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
-import { Card } from '../../components/ui/card'
-import { Button } from '../../components/ui/button'
-import { Badge } from '../../components/ui/badge'
-import { Input } from '../../components/ui/input'
-import { Select } from '../../components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs'
-import { Progress } from '../../components/ui/progress'
-import useReportGeneration from '../../hooks/useReportGeneration'
-import { useAnalysisHistory } from '../../hooks/useAnalysis'
-import ComprehensiveReportTemplate from '../../components/reports/ComprehensiveReportTemplate'
-import { FrameworkReportTemplates } from '../../components/reports/FrameworkReportTemplates'
-import YouTubeEmbed, { extractYouTubeVideoId, isValidYouTubeUrl } from '../../components/media/YouTubeEmbed'
-import { comprehensiveFrameworkUtils } from '../../types/comprehensive-analysis'
-import {
-  FileText,
-  Download,
-  Eye,
-  Trash2,
-  Share2,
-  Printer,
-  Plus,
-  Search,
-  Filter,
-  Calendar,
-  Clock,
-  BarChart3,
-  PieChart,
-  TrendingUp,
-  Users,
-  PlayCircle,
-  ExternalLink
-} from 'lucide-react'
+import { useState } from 'react'
+import Link from 'next/link'
 
-const ReportsPage: React.FC = () => {
-  const {
-    generatedReports,
-    isLoading,
-    error,
-    generationState,
-    generateComprehensiveReport,
-    generateFrameworkReport,
-    deleteReport,
-    downloadReport,
-    previewReport,
-    printReport,
-    shareReport
-  } = useReportGeneration()
+export default function ReportsPage() {
+  const [sampleAnalysis] = useState({
+    analysis_id: "sample-cbil-001",
+    framework: "cbil",
+    framework_name: "개념기반 탐구 수업(CBIL) 분석",
+    analysis: `### CBIL 7단계 분석
 
-  const { data: analysisResults = [] } = useAnalysisHistory()
+#### 1. Engage (흥미 유도 및 연결)
+수업 초반에 교사는 학생들에게 시를 낭송하며 흥미를 유도했다. 학생들은 시를 따라 읽으며 참여했으나, 정서적·지적 호기심을 유도하는 데 있어 개념과의 명확한 연결은 부족했다. 이는 지식 중심의 정보 전달에 가까웠다. 점수: 1점
 
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'comprehensive' | 'summary' | 'individual'>('all')
-  const [sortBy, setSortBy] = useState<'date' | 'title' | 'type'>('date')
-  const [selectedReport, setSelectedReport] = useState<string | null>(null)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [youtubeUrl, setYoutubeUrl] = useState('')
+#### 2. Focus (탐구 방향 설정)
+교사는 이육사의 시와 관련된 질문을 던졌으나, 질문이 주로 감상 중심이었다. 개념 중심 사고를 유도하는 본질적 질문이 부족했다. 점수: 1점
 
-  // Filter and sort reports
-  const filteredReports = useMemo(() => {
-    let filtered = generatedReports
+#### 3. Investigate (자료 탐색 및 개념 형성)
+학생들은 시를 읽고 감상하는 활동을 했으나, 개념의 속성이나 조건을 탐색하는 활동은 부족했다. 점수: 1점
 
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(report =>
-        report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.metadata.teacher?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.metadata.subject?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+#### 4. Organize (개념 구조화)
+수업에서 개념을 구조화하는 활동은 명확하지 않았다. 학생들이 정보를 단편적으로 정리하는 데 그쳤다. 점수: 1점
+
+#### 5. Generalize (일반화 진술)
+수업에서 개념을 일반화하는 활동은 명확히 드러나지 않았다. 점수: 0점
+
+#### 6. Transfer (새로운 맥락에 적용)
+수업에서 개념을 새로운 맥락에 적용하는 활동은 제한적이었다. 점수: 1점
+
+#### 7. Reflect (사고 성찰)
+학생들은 수업을 통해 자신의 사고 변화를 성찰하는 기회를 가졌으나, 구조적 성찰은 부족했다. 점수: 1점`,
+    character_count: 5026,
+    word_count: 1229,
+    created_at: "2025-08-22T10:35:00Z",
+    metadata: {
+      video_url: "https://www.youtube.com/watch?v=-OLCt6WScEY",
+      video_id: "-OLCt6WScEY",
+      language: "ko"
     }
+  })
 
-    // Filter by type
-    if (filterType !== 'all') {
-      filtered = filtered.filter(report => report.type === filterType)
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        case 'title':
-          return a.title.localeCompare(b.title)
-        case 'type':
-          return a.type.localeCompare(b.type)
-        default:
-          return 0
-      }
-    })
-
-    return filtered
-  }, [generatedReports, searchTerm, filterType, sortBy])
-
-  // Handle report generation from existing analysis
-  const handleGenerateFromAnalysis = async (analysisId: string, type: 'comprehensive' | 'individual') => {
-    const analysis = analysisResults.find(result => result.id === analysisId)
-    if (!analysis) return
-
-    const metadata = {
-      teacher: analysis.metadata?.teacher || '',
-      subject: analysis.metadata?.subject || '',
-      grade: analysis.metadata?.grade_level || '',
-      duration: analysis.metadata?.duration?.toString() || '',
-      analysisTime: '완료'
-    }
-
+  const generateSampleReport = async () => {
     try {
-      if (type === 'comprehensive' && 'frameworks_analyzed' in analysis) {
-        await generateComprehensiveReport(analysis as any, metadata)
-      } else if (type === 'individual') {
-        // Generate individual reports for each framework
-        if ('frameworks_analyzed' in analysis) {
-          const comprehensiveAnalysis = analysis as any
-          for (const frameworkId of comprehensiveAnalysis.frameworks_analyzed) {
-            const result = comprehensiveAnalysis.individual_results[frameworkId]
-            if (result) {
-              await generateFrameworkReport(frameworkId, result, metadata)
-            }
-          }
+      const response = await fetch('/api/reports/generate/html', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          analysis_result: sampleAnalysis,
+          template: 'comprehensive',
+          title: `${sampleAnalysis.framework_name} 분석 보고서`
+        }),
+      })
+
+      if (response.ok) {
+        const htmlContent = await response.text()
+        
+        // Open HTML report in new window
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          newWindow.document.write(htmlContent)
+          newWindow.document.close()
         }
+      } else {
+        throw new Error('Report generation failed')
       }
     } catch (error) {
-      console.error('Failed to generate report:', error)
+      console.error('Error generating report:', error)
+      alert('보고서 생성 중 오류가 발생했습니다. 서비스가 실행 중인지 확인해주세요.')
     }
   }
 
-  // Handle YouTube URL processing
-  const handleYouTubeProcess = () => {
-    if (!isValidYouTubeUrl(youtubeUrl)) {
-      alert('올바른 YouTube URL을 입력해주세요.')
-      return
-    }
+  const generateSummaryReport = async () => {
+    try {
+      const response = await fetch('/api/reports/generate/html', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          analysis_result: sampleAnalysis,
+          template: 'summary',
+          title: `${sampleAnalysis.framework_name} 요약 보고서`
+        }),
+      })
 
-    const videoId = extractYouTubeVideoId(youtubeUrl)
-    if (videoId) {
-      // This would typically trigger transcription and analysis
-      console.log('Processing YouTube video:', videoId)
-      // You would integrate this with your transcription service
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const getReportTypeIcon = (type: string) => {
-    switch (type) {
-      case 'comprehensive':
-        return <BarChart3 className="w-4 h-4" />
-      case 'summary':
-        return <PieChart className="w-4 h-4" />
-      case 'individual':
-        return <TrendingUp className="w-4 h-4" />
-      default:
-        return <FileText className="w-4 h-4" />
+      if (response.ok) {
+        const htmlContent = await response.text()
+        
+        // Open HTML report in new window
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          newWindow.document.write(htmlContent)
+          newWindow.document.close()
+        }
+      } else {
+        throw new Error('Report generation failed')
+      }
+    } catch (error) {
+      console.error('Error generating report:', error)
+      alert('보고서 생성 중 오류가 발생했습니다.')
     }
   }
 
-  const getReportTypeName = (type: string) => {
-    switch (type) {
-      case 'comprehensive':
-        return '종합 보고서'
-      case 'summary':
-        return '요약 보고서'
-      case 'individual':
-        return '개별 프레임워크'
-      default:
-        return '보고서'
-    }
+  const downloadJsonReport = () => {
+    const jsonData = JSON.stringify(sampleAnalysis, null, 2)
+    const blob = new Blob([jsonData], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `analysis-${sampleAnalysis.analysis_id}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    
+    URL.revokeObjectURL(url)
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">분석 보고서</h1>
-          <p className="text-gray-600 mt-2">
-            생성된 보고서를 관리하고 새로운 보고서를 생성할 수 있습니다.
-          </p>
+    <div className="container">
+      <div className="page-title">분석 보고서</div>
+      <div className="page-subtitle">아름다운 HTML 보고서로 분석 결과를 확인하세요</div>
+      
+      <div className="container">
+        <h3>📊 보고서 템플릿</h3>
+        <div className="grid grid-2">
+          <div className="card">
+            <h4>📄 종합 보고서</h4>
+            <p>인터랙티브 차트와 시각화가 포함된 상세한 분석 보고서입니다.</p>
+            <div style={{ marginTop: '20px' }}>
+              <button
+                className="btn"
+                onClick={generateSampleReport}
+              >
+                📄 종합 보고서 보기
+              </button>
+            </div>
+          </div>
+          
+          <div className="card">
+            <h4>📋 요약 보고서</h4>
+            <p>핵심 내용만 담은 간결한 요약 보고서입니다.</p>
+            <div style={{ marginTop: '20px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={generateSummaryReport}
+              >
+                📋 요약 보고서 보기
+              </button>
+            </div>
+          </div>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="flex items-center">
-          <Plus className="w-4 h-4 mr-2" />
-          새 보고서 생성
-        </Button>
       </div>
-
-      {/* Generation Status */}
-      {generationState.isGenerating && (
-        <Card className="p-6 mb-6 bg-blue-50 border-blue-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-blue-900">보고서 생성 중...</h3>
-            <span className="text-sm text-blue-700">{Math.round(generationState.progress)}%</span>
+      
+      <div className="container">
+        <h3>💾 데이터 내보내기</h3>
+        <div className="card">
+          <h4>🔄 JSON 형식</h4>
+          <p>분석 결과를 JSON 형식으로 다운로드하여 다른 시스템에서 활용할 수 있습니다.</p>
+          <div style={{ marginTop: '20px' }}>
+            <button
+              className="btn"
+              onClick={downloadJsonReport}
+            >
+              📥 JSON 다운로드
+            </button>
           </div>
-          <Progress value={generationState.progress} className="mb-2" />
-          <p className="text-sm text-blue-700">{generationState.currentStep}</p>
-        </Card>
-      )}
-
-      {/* YouTube Video Processing */}
-      <Card className="p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <PlayCircle className="w-5 h-5 mr-2 text-red-600" />
-          YouTube 영상 분석
-        </h3>
-        <div className="flex gap-4">
-          <Input
-            placeholder="YouTube URL을 입력하세요 (예: https://www.youtube.com/watch?v=...)"
-            value={youtubeUrl}
-            onChange={(e) => setYoutubeUrl(e.target.value)}
-            className="flex-1"
-          />
-          <Button 
-            onClick={handleYouTubeProcess}
-            disabled={!isValidYouTubeUrl(youtubeUrl)}
-          >
-            분석 시작
-          </Button>
         </div>
-        
-        {/* YouTube Preview */}
-        {isValidYouTubeUrl(youtubeUrl) && (
-          <div className="mt-6">
-            <YouTubeEmbed
-              videoId={extractYouTubeVideoId(youtubeUrl) || ''}
-              title="분석 대상 영상"
-              height={300}
-              showControls={true}
-              showTitle={true}
-              showTimestamp={true}
-            />
+      </div>
+      
+      <div className="container">
+        <h3>🎨 보고서 특징</h3>
+        <div className="grid grid-3">
+          <div className="card">
+            <h4>📊 시각적 분석</h4>
+            <p>차트와 그래프로 분석 결과를 직관적으로 표현합니다.</p>
+            <ul style={{ marginLeft: '20px', color: '#666', fontSize: '0.9rem' }}>
+              <li>반응형 디자인</li>
+              <li>인터랙티브 요소</li>
+              <li>인쇄 최적화</li>
+            </ul>
           </div>
-        )}
-      </Card>
-
-      <Tabs defaultValue="reports" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="reports">생성된 보고서</TabsTrigger>
-          <TabsTrigger value="templates">보고서 템플릿</TabsTrigger>
-          <TabsTrigger value="analytics">보고서 분석</TabsTrigger>
-        </TabsList>
-
-        {/* Generated Reports Tab */}
-        <TabsContent value="reports" className="space-y-6">
-          {/* Filters and Search */}
-          <Card className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="보고서 제목, 교사명, 과목으로 검색..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <Select
-                  value={filterType}
-                  onValueChange={(value: any) => setFilterType(value)}
-                >
-                  <option value="all">모든 유형</option>
-                  <option value="comprehensive">종합 보고서</option>
-                  <option value="summary">요약 보고서</option>
-                  <option value="individual">개별 프레임워크</option>
-                </Select>
-                
-                <Select
-                  value={sortBy}
-                  onValueChange={(value: any) => setSortBy(value)}
-                >
-                  <option value="date">생성 날짜순</option>
-                  <option value="title">제목순</option>
-                  <option value="type">유형순</option>
-                </Select>
-              </div>
-            </div>
-          </Card>
-
-          {/* Reports List */}
-          {isLoading ? (
-            <Card className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">보고서를 불러오는 중...</p>
-            </Card>
-          ) : filteredReports.length === 0 ? (
-            <Card className="p-8 text-center">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm ? '검색 결과가 없습니다' : '생성된 보고서가 없습니다'}
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm ? '다른 검색어를 시도해보세요.' : '새로운 보고서를 생성해보세요.'}
-              </p>
-              {!searchTerm && (
-                <Button onClick={() => setShowCreateDialog(true)}>
-                  첫 번째 보고서 생성하기
-                </Button>
-              )}
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredReports.map((report) => (
-                <Card key={report.id} className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center">
-                      {getReportTypeIcon(report.type)}
-                      <span className="ml-2 font-medium">{report.title}</span>
-                    </div>
-                    <Badge variant="outline">
-                      {getReportTypeName(report.type)}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-2 mb-4 text-sm text-gray-600">
-                    {report.metadata.teacher && (
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-2" />
-                        {report.metadata.teacher}
-                      </div>
-                    )}
-                    {report.metadata.subject && (
-                      <div className="flex items-center">
-                        <BarChart3 className="w-4 h-4 mr-2" />
-                        {report.metadata.subject}
-                      </div>
-                    )}
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {formatDate(report.createdAt)}
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-2" />
-                      분석 프레임워크: {report.frameworkIds.length}개
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => previewReport(report.id)}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      미리보기
-                    </Button>
-                    
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadReport(report.id, 'html')}
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      다운로드
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => printReport(report.id)}
-                    >
-                      <Printer className="w-4 h-4" />
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => shareReport(report.id)}
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => deleteReport(report.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Templates Tab */}
-        <TabsContent value="templates" className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">사용 가능한 보고서 템플릿</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(FrameworkReportTemplates).map(([frameworkId, TemplateComponent]) => {
-                const framework = comprehensiveFrameworkUtils.getFramework(frameworkId)
-                if (!framework) return null
-
-                return (
-                  <Card key={frameworkId} className="p-4">
-                    <div className="flex items-center mb-3">
-                      <div 
-                        className="w-4 h-4 rounded mr-3"
-                        style={{ backgroundColor: framework.color }}
-                      />
-                      <h4 className="font-medium">{framework.name_ko}</h4>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">{framework.description}</p>
-                    <Button size="sm" variant="outline" className="w-full">
-                      템플릿 미리보기
-                    </Button>
-                  </Card>
-                )
-              })}
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="p-6 text-center">
-              <div className="text-3xl font-bold text-blue-600">{generatedReports.length}</div>
-              <div className="text-sm text-gray-600">총 생성된 보고서</div>
-            </Card>
-            
-            <Card className="p-6 text-center">
-              <div className="text-3xl font-bold text-green-600">
-                {generatedReports.filter(r => r.type === 'comprehensive').length}
-              </div>
-              <div className="text-sm text-gray-600">종합 보고서</div>
-            </Card>
-            
-            <Card className="p-6 text-center">
-              <div className="text-3xl font-bold text-purple-600">
-                {generatedReports.filter(r => r.type === 'individual').length}
-              </div>
-              <div className="text-sm text-gray-600">개별 프레임워크</div>
-            </Card>
-            
-            <Card className="p-6 text-center">
-              <div className="text-3xl font-bold text-orange-600">
-                {new Set(generatedReports.flatMap(r => r.frameworkIds)).size}
-              </div>
-              <div className="text-sm text-gray-600">분석된 프레임워크</div>
-            </Card>
+          
+          <div className="card">
+            <h4>📱 모바일 최적화</h4>
+            <p>모든 기기에서 완벽하게 보이는 반응형 보고서입니다.</p>
+            <ul style={{ marginLeft: '20px', color: '#666', fontSize: '0.9rem' }}>
+              <li>모바일 친화적</li>
+              <li>터치 인터페이스</li>
+              <li>빠른 로딩</li>
+            </ul>
           </div>
-
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">최근 활동</h3>
-            <div className="space-y-3">
-              {generatedReports.slice(0, 5).map((report) => (
-                <div key={report.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                  <div className="flex items-center">
-                    {getReportTypeIcon(report.type)}
-                    <span className="ml-3 font-medium">{report.title}</span>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {formatDate(report.createdAt)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Create Report Dialog */}
-      {showCreateDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4">새 보고서 생성</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">기존 분석 결과로부터 생성</h4>
-                <div className="space-y-2">
-                  {analysisResults.slice(0, 5).map((analysis) => (
-                    <div key={analysis.id} className="flex items-center justify-between p-3 border rounded">
-                      <div>
-                        <div className="font-medium">{analysis.text_preview.slice(0, 50)}...</div>
-                        <div className="text-sm text-gray-600">
-                          {new Date(analysis.created_at).toLocaleDateString('ko-KR')}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleGenerateFromAnalysis(analysis.id, 'comprehensive')}
-                        >
-                          종합 보고서
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleGenerateFromAnalysis(analysis.id, 'individual')}
-                        >
-                          개별 보고서
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                취소
-              </Button>
-            </div>
-          </Card>
+          
+          <div className="card">
+            <h4>🎨 아름다운 디자인</h4>
+            <p>교육 전문가를 위한 세련되고 전문적인 보고서 디자인입니다.</p>
+            <ul style={{ marginLeft: '20px', color: '#666', fontSize: '0.9rem' }}>
+              <li>색상 코딩</li>
+              <li>타이포그래피</li>
+              <li>레이아웃 최적화</li>
+            </ul>
+          </div>
         </div>
-      )}
+      </div>
+      
+      <div className="container">
+        <h3>📈 활용 방법</h3>
+        <div className="grid grid-2">
+          <div>
+            <h4>🎯 개인 활용</h4>
+            <ul style={{ marginLeft: '20px', color: '#666' }}>
+              <li>자신의 수업 개선점 파악</li>
+              <li>교수법 변화 추적</li>
+              <li>학습자 중심 수업 설계</li>
+              <li>동료 교사와 경험 공유</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4>🏫 기관 활용</h4>
+            <ul style={{ marginLeft: '20px', color: '#666' }}>
+              <li>교사 연수 자료로 활용</li>
+              <li>수업 컨설팅 도구</li>
+              <li>교육과정 개선 근거</li>
+              <li>수업 품질 관리</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <div className="status status-info" style={{ marginTop: '30px' }}>
+        <strong>💡 안내:</strong> 위의 샘플 보고서는 실제 수업 분석 결과를 기반으로 한 예시입니다. 
+        실제 분석을 진행하려면 <Link href="/transcription" style={{ color: '#0c5460', fontWeight: 'bold' }}>전사 페이지</Link>에서 
+        YouTube URL을 입력하거나 <Link href="/analysis" style={{ color: '#0c5460', fontWeight: 'bold' }}>분석 페이지</Link>에서 
+        텍스트를 직접 입력하세요.
+      </div>
     </div>
   )
 }
-
-export default ReportsPage

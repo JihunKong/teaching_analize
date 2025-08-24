@@ -1,0 +1,57 @@
+{
+  "mappings": [
+    {
+      "name": "Get Available Frameworks",
+      "request": {
+        "method": "GET",
+        "urlPath": "/api/frameworks"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "frameworks": [
+            {
+              "id": "cbil",
+              "name": "CBIL (7단계)",
+              "description": "개념기반 탐구학습의 7단계 실행 여부를 평가하고 점수를 부여합니다."
+            },
+            {
+              "id": "dialogue",
+              "name": "학생주도 토론",
+              "description": "학생 주도 질문과 대화, 토론 수업의 질문 유형과 대화 패턴을 분석합니다."
+            },
+            {
+              "id": "coaching",
+              "name": "수업 코칭",
+              "description": "수업 설계와 실행을 15개 항목으로 분석하고 구체적인 코칭을 제공합니다."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Frameworks API Error",
+      "request": {
+        "method": "GET",
+        "urlPath": "/api/frameworks",
+        "headers": {
+          "X-Trigger-Error": {
+            "equalTo": "true"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "detail": "Analysis service temporarily unavailable"
+        }
+      }
+    }
+  ]
+}

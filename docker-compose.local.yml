@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Local PostgreSQL database
   postgres_local:
@@ -11,7 +9,7 @@ services:
       POSTGRES_PASSWORD: aiboa_local_password
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5433:5432"  # Use different port to avoid conflicts
+      - "5435:5432"  # Use different port to avoid conflicts
     volumes:
       - postgres_local_data:/var/lib/postgresql/data
     healthcheck:
@@ -41,7 +39,7 @@ services:
   # Transcription service (local)
   transcription_local:
     build:
-      context: ./services_new/transcription
+      context: ./services/transcription
       dockerfile: Dockerfile
     container_name: aiboa_transcription_local
     environment:
@@ -63,6 +61,7 @@ services:
       # Local development settings
       PYTHONUNBUFFERED: 1
       LOG_LEVEL: INFO
+      DEPLOYMENT_ENV: local
       
     ports:
       - "8002:8000"  # Use different port for local
@@ -85,7 +84,7 @@ services:
   # Analysis service (local)
   analysis_local:
     build:
-      context: ./services_new/analysis
+      context: ./services/analysis
       dockerfile: Dockerfile
     container_name: aiboa_analysis_local
     environment:
@@ -127,10 +126,11 @@ services:
     image: nginx:alpine
     container_name: aiboa_nginx_local
     ports:
-      - "8080:80"  # Use port 8080 for local to avoid conflicts
+      - "80:80"    # Standard HTTP port
+      - "8080:80"  # Alternative port 8080 for local development
     volumes:
       - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
-      - ./frontend_new/out:/usr/share/nginx/html:ro  # Serve static frontend
+      - ./frontend/out:/usr/share/nginx/html:ro  # Serve static frontend
       - ./logs_local/nginx:/var/log/nginx
     depends_on:
       - transcription_local

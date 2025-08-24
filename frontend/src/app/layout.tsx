@@ -1,46 +1,10 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-import { QueryProvider } from '@/components/providers/query-provider'
-import { ToastProvider } from '@/components/providers/toast-provider'
-
-const inter = Inter({ subsets: ['latin'] })
+import type { Metadata } from 'next'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: {
-    default: 'AIBOA - AI-Based Observation and Analysis',
-    template: '%s | AIBOA',
-  },
-  description: 'Advanced AI-powered teaching analysis platform for educational institutions',
-  keywords: ['AI', 'education', 'teaching analysis', 'CBIL', 'transcription'],
-  authors: [{ name: 'AIBOA Team' }],
-  viewport: 'width=device-width, initial-scale=1',
-  robots: 'index, follow',
-  openGraph: {
-    type: 'website',
-    locale: 'ko_KR',
-    url: 'https://aiboa.ai',
-    siteName: 'AIBOA',
-    title: 'AIBOA - AI-Based Observation and Analysis',
-    description: 'Advanced AI-powered teaching analysis platform',
-    images: [
-      {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'AIBOA Platform',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    site: '@aiboa',
-    title: 'AIBOA - Teaching Analysis Platform',
-    description: 'AI-powered teaching analysis and improvement',
-    images: ['/twitter-image.jpg'],
-  },
-  manifest: '/manifest.json',
-  themeColor: '#3b82f6',
+  title: 'AIBOA - AI 교육 분석 플랫폼',
+  description: 'YouTube 영상을 통한 교사 발화 분석 시스템',
 }
 
 export default function RootLayout({
@@ -49,15 +13,30 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ko" suppressHydrationWarning>
-      <body className={inter.className}>
-        <QueryProvider>
-          <ToastProvider>
-            <div className="min-h-screen bg-gray-50">
-              {children}
+    <html lang="ko">
+      <body>
+        <header className="header">
+          <nav className="nav">
+            <div className="nav-brand">
+              <h1>AIBOA</h1>
+              <span>AI 교육 분석</span>
             </div>
-          </ToastProvider>
-        </QueryProvider>
+            <div className="nav-menu">
+              <Link href="/" className="nav-link">홈</Link>
+              <Link href="/transcription" className="nav-link">전사</Link>
+              <Link href="/analysis" className="nav-link">분석</Link>
+              <Link href="/reports" className="nav-link">보고서</Link>
+            </div>
+          </nav>
+        </header>
+        
+        <main className="main">
+          {children}
+        </main>
+        
+        <footer className="footer">
+          <p>&copy; 2025 AIBOA - AI 기반 교육 분석 플랫폼</p>
+        </footer>
       </body>
     </html>
   )

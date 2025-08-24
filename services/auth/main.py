@@ -1,318 +1,315 @@
+#!/usr/bin/env python3
 """
-AIBOA Authentication Service
-Main FastAPI application for user authentication and authorization
+AIBOA Auth Service
+Simple authentication service for teachers
 """
 
+import os
+import hashlib
+import jwt
 import logging
-import sys
-from contextlib import asynccontextmanager
-from datetime import datetime
-from typing import Dict, Any
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
 
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from sqlalchemy.orm import Session
-import uvicorn
-
-from config import settings, validate_configuration
-from database import get_database, init_database, health_check
-from schemas import ErrorResponse
-from models import User
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+import sqlite3
+import json
 
 # Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.log_level),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(settings.log_file) if settings.log_file else logging.NullHandler()
-    ]
-)
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan manager"""
-    logger.info("Starting AIBOA Authentication Service...")
-    
-    try:
-        # Validate configuration
-        validate_configuration()
-        logger.info("Configuration validated successfully")
-        
-        # Initialize database
-        init_database()
-        logger.info("Database initialized successfully")
-        
-        # Log startup information
-        logger.info(f"Service: {settings.app_name} v{settings.app_version}")
-        logger.info(f"Environment: {settings.environment}")
-        logger.info(f"Debug mode: {settings.debug}")
-        logger.info(f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else 'local'}")
-        
-        yield
-        
-    except Exception as e:
-        logger.error(f"Failed to start application: {e}")
-        raise
-    finally:
-        logger.info("Shutting down AIBOA Authentication Service...")
-
-
-# Create FastAPI application
 app = FastAPI(
-    title=settings.app_name,
-    description="Authentication and authorization service for AIBOA platform",
-    version=settings.app_version,
-    debug=settings.debug,
-    lifespan=lifespan,
-    openapi_url="/openapi.json" if not settings.is_production() else None,
-    docs_url="/docs" if not settings.is_production() else None,
-    redoc_url="/redoc" if not settings.is_production() else None
+    title="AIBOA Auth Service",
+    description="Authentication service for educational platform",
+    version="2.0.0"
 )
 
-# Add CORS middleware
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    **settings.get_cors_config()
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Add trusted host middleware for production
-if settings.is_production():
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=["*"]  # Configure this based on your deployment
-    )
+# JWT configuration
+JWT_SECRET = os.getenv('JWT_SECRET_KEY', 'aiboa-secret-key-change-in-production')
+JWT_ALGORITHM = 'HS256'
 
+security = HTTPBearer()
 
-# Global exception handlers
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(
-            success=False,
-            message=exc.detail,
-            error_code=f"HTTP_{exc.status_code}",
-            timestamp=datetime.now()
-        ).model_dump(mode='json')
-    )
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle request validation errors"""
-    return JSONResponse(
-        status_code=422,
-        content=ErrorResponse(
-            success=False,
-            message="Invalid request data",
-            error_code="VALIDATION_ERROR",
-            details={"errors": exc.errors()},
-            timestamp=datetime.now()
-        ).model_dump(mode='json')
-    )
-
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions"""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+# Initialize SQLite database
+def init_database():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
     
-    return JSONResponse(
-        status_code=500,
-        content=ErrorResponse(
-            success=False,
-            message="Internal server error",
-            error_code="INTERNAL_ERROR",
-            details={"error": str(exc)} if settings.debug else None,
-            timestamp=datetime.now()
-        ).model_dump(mode='json')
-    )
-
-
-# Health check endpoints
-@app.get("/health", tags=["Health"])
-async def health_check_endpoint():
-    """Health check endpoint"""
-    try:
-        db_health = health_check()
-        
-        return {
-            "status": "healthy" if db_health.get("database") == "healthy" else "unhealthy",
-            "service": settings.app_name,
-            "version": settings.app_version,
-            "environment": settings.environment,
-            "timestamp": datetime.now().isoformat(),
-            "database": db_health,
-            "uptime": "unknown"  # Could implement uptime tracking
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "unhealthy",
-                "service": settings.app_name,
-                "version": settings.app_version,
-                "error": str(e),
-                "timestamp": datetime.now().isoformat()
-            }
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            name TEXT NOT NULL,
+            school TEXT,
+            subject TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
         )
+    ''')
+    
+    conn.commit()
+    conn.close()
 
+# Initialize database on startup
+init_database()
 
-@app.get("/health/detailed", tags=["Health"])
-async def detailed_health_check():
-    """Detailed health check endpoint"""
-    from database import get_database_info
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    name: str
+    school: Optional[str] = None
+    subject: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserProfile(BaseModel):
+    id: int
+    email: str
+    name: str
+    school: Optional[str]
+    subject: Optional[str]
+    created_at: str
+
+def hash_password(password: str) -> str:
+    """Hash password using SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify password against hash"""
+    return hashlib.sha256(password.encode()).hexdigest() == hashed
+
+def create_access_token(data: Dict[str, Any]) -> str:
+    """Create JWT access token"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=24)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+    """Verify JWT token"""
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Get user by email from database"""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT id, email, password_hash, name, school, subject, created_at FROM users WHERE email = ?",
+        (email,)
+    )
+    
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            "id": row[0],
+            "email": row[1],
+            "password_hash": row[2],
+            "name": row[3],
+            "school": row[4],
+            "subject": row[5],
+            "created_at": row[6]
+        }
+    return None
+
+def create_user(user_data: UserCreate) -> Dict[str, Any]:
+    """Create new user in database"""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
     
     try:
-        db_health = health_check()
-        db_info = get_database_info()
+        password_hash = hash_password(user_data.password)
+        
+        cursor.execute(
+            """
+            INSERT INTO users (email, password_hash, name, school, subject)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (user_data.email, password_hash, user_data.name, user_data.school, user_data.subject)
+        )
+        
+        user_id = cursor.lastrowid
+        conn.commit()
         
         return {
-            "status": "healthy" if db_health.get("database") == "healthy" else "unhealthy",
-            "service": {
-                "name": settings.app_name,
-                "version": settings.app_version,
-                "environment": settings.environment,
-                "debug": settings.debug
-            },
-            "database": {
-                "health": db_health,
-                "info": db_info
-            },
-            "configuration": {
-                "cors_enabled": bool(settings.cors_origins),
-                "rate_limiting": settings.rate_limit_enabled,
-                "email_configured": settings.is_email_configured(),
-                "analytics_enabled": settings.enable_analytics
-            },
+            "id": user_id,
+            "email": user_data.email,
+            "name": user_data.name,
+            "school": user_data.school,
+            "subject": user_data.subject,
+            "created_at": datetime.now().isoformat()
+        }
+        
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    finally:
+        conn.close()
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "auth", "timestamp": datetime.now().isoformat()}
+
+@app.post("/api/register")
+async def register(user_data: UserCreate):
+    """Register new user"""
+    try:
+        # Check if user already exists
+        existing_user = get_user_by_email(user_data.email)
+        if existing_user:
+            raise HTTPException(status_code=400, detail="User already exists")
+        
+        # Create new user
+        new_user = create_user(user_data)
+        
+        # Create access token
+        token_data = {
+            "user_id": new_user["id"],
+            "email": new_user["email"],
+            "name": new_user["name"]
+        }
+        access_token = create_access_token(token_data)
+        
+        return {
+            "message": "User created successfully",
+            "user": UserProfile(**new_user),
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+        
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+@app.post("/api/login")
+async def login(login_data: UserLogin):
+    """Login user"""
+    try:
+        # Get user from database
+        user = get_user_by_email(login_data.email)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Verify password
+        if not verify_password(login_data.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Update last login
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?",
+            (user["id"],)
+        )
+        conn.commit()
+        conn.close()
+        
+        # Create access token
+        token_data = {
+            "user_id": user["id"],
+            "email": user["email"],
+            "name": user["name"]
+        }
+        access_token = create_access_token(token_data)
+        
+        return {
+            "message": "Login successful",
+            "user": UserProfile(
+                id=user["id"],
+                email=user["email"],
+                name=user["name"],
+                school=user["school"],
+                subject=user["subject"],
+                created_at=user["created_at"]
+            ),
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Login failed")
+
+@app.get("/api/profile")
+async def get_profile(token_data: Dict[str, Any] = Depends(verify_token)):
+    """Get user profile"""
+    try:
+        user = get_user_by_email(token_data["email"])
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return UserProfile(
+            id=user["id"],
+            email=user["email"],
+            name=user["name"],
+            school=user["school"],
+            subject=user["subject"],
+            created_at=user["created_at"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Profile error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not retrieve profile")
+
+@app.get("/api/verify")
+async def verify_token_endpoint(token_data: Dict[str, Any] = Depends(verify_token)):
+    """Verify token validity"""
+    return {"valid": True, "user_id": token_data["user_id"], "email": token_data["email"]}
+
+@app.get("/api/stats")
+async def get_stats():
+    """Get auth service statistics"""
+    try:
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT COUNT(*) FROM users")
+        total_users = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM users WHERE last_login IS NOT NULL")
+        active_users = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            "total_users": total_users,
+            "active_users": active_users,
+            "service": "auth",
             "timestamp": datetime.now().isoformat()
         }
+        
     except Exception as e:
-        logger.error(f"Detailed health check failed: {e}")
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "unhealthy",
-                "error": str(e),
-                "timestamp": datetime.now().isoformat()
-            }
-        )
+        logger.error(f"Stats error: {str(e)}")
+        return {"error": "Could not retrieve stats"}
 
-
-# Authentication routes
-from routes import auth, users, admin, dashboard
-
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(admin.router, prefix="/admin", tags=["Admin"])
-app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
-
-
-# Root endpoint
-@app.get("/", tags=["Root"])
-async def root():
-    """Root endpoint with service information"""
-    return {
-        "service": settings.app_name,
-        "version": settings.app_version,
-        "status": "running",
-        "environment": settings.environment,
-        "docs_url": "/docs" if not settings.is_production() else None,
-        "health_url": "/health",
-        "timestamp": datetime.now().isoformat()
-    }
-
-
-# API information endpoint
-@app.get("/info", tags=["Info"])
-async def api_info():
-    """API information endpoint"""
-    return {
-        "api": {
-            "name": settings.app_name,
-            "version": settings.app_version,
-            "environment": settings.environment
-        },
-        "endpoints": {
-            "auth": {
-                "login": "/auth/login",
-                "logout": "/auth/logout",
-                "refresh": "/auth/refresh",
-                "profile": "/auth/profile",
-                "forgot_password": "/auth/forgot-password",
-                "reset_password": "/auth/reset-password"
-            },
-            "users": {
-                "list": "/users/",
-                "create": "/users/",
-                "get": "/users/{user_id}",
-                "update": "/users/{user_id}",
-                "delete": "/users/{user_id}"
-            },
-            "admin": {
-                "users": "/admin/users/",
-                "statistics": "/admin/statistics",
-                "analytics": "/admin/analytics",
-                "logs": "/admin/logs"
-            },
-            "dashboard": {
-                "summary": "/dashboard/summary",
-                "coach": "/dashboard/coach",
-                "admin": "/dashboard/admin"
-            }
-        },
-        "features": {
-            "jwt_authentication": True,
-            "role_based_access": True,
-            "password_reset": settings.is_email_configured(),
-            "user_management": True,
-            "analytics": settings.enable_analytics,
-            "rate_limiting": settings.rate_limit_enabled
-        }
-    }
-
-
-# Middleware for request logging
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log all requests"""
-    start_time = datetime.now()
-    
-    # Log request
-    logger.info(
-        f"Request: {request.method} {request.url.path} "
-        f"from {request.client.host if request.client else 'unknown'}"
-    )
-    
-    # Process request
-    response = await call_next(request)
-    
-    # Log response
-    process_time = (datetime.now() - start_time).total_seconds()
-    logger.info(
-        f"Response: {response.status_code} "
-        f"in {process_time:.3f}s"
-    )
-    
-    return response
-
-
-# Run the application
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.reload,
-        log_level=settings.log_level.lower(),
-        access_log=True
-    )
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8002)

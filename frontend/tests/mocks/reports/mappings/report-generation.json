@@ -1,0 +1,89 @@
+{
+  "mappings": [
+    {
+      "name": "Generate Comprehensive HTML Report",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/reports/generate/html",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.template",
+            "equalTo": "comprehensive"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/html; charset=utf-8"
+        },
+        "body": "<!DOCTYPE html>\n<html lang=\"ko\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>{{jsonPath request.body '$.title'}}</title>\n    <style>\n        body {\n            font-family: 'Noto Sans KR', Arial, sans-serif;\n            line-height: 1.6;\n            color: #333;\n            max-width: 1200px;\n            margin: 0 auto;\n            padding: 20px;\n            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n        }\n        .container {\n            background: white;\n            border-radius: 15px;\n            box-shadow: 0 20px 40px rgba(0,0,0,0.1);\n            padding: 40px;\n            margin: 20px 0;\n        }\n        h1 {\n            color: #2c3e50;\n            text-align: center;\n            border-bottom: 3px solid #3498db;\n            padding-bottom: 20px;\n            margin-bottom: 30px;\n        }\n        h2 {\n            color: #34495e;\n            border-left: 4px solid #3498db;\n            padding-left: 20px;\n            margin-top: 30px;\n        }\n        h3 {\n            color: #2980b9;\n            margin-top: 25px;\n        }\n        .stage {\n            background: #f8f9fa;\n            border-radius: 10px;\n            padding: 20px;\n            margin: 15px 0;\n            border-left: 4px solid #17a2b8;\n        }\n        .score {\n            background: #e3f2fd;\n            color: #1565c0;\n            padding: 8px 15px;\n            border-radius: 20px;\n            display: inline-block;\n            margin-top: 10px;\n            font-weight: bold;\n        }\n        .chart-container {\n            width: 100%;\n            height: 400px;\n            margin: 30px 0;\n            background: #f8f9fa;\n            border-radius: 10px;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            border: 2px dashed #dee2e6;\n        }\n        .interactive-element {\n            cursor: pointer;\n            transition: all 0.3s ease;\n        }\n        .interactive-element:hover {\n            transform: scale(1.05);\n        }\n        .statistics {\n            background: linear-gradient(45deg, #667eea, #764ba2);\n            color: white;\n            padding: 20px;\n            border-radius: 10px;\n            margin-top: 30px;\n        }\n        .stats-grid {\n            display: grid;\n            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));\n            gap: 20px;\n        }\n        .stat-item {\n            background: rgba(255,255,255,0.1);\n            padding: 15px;\n            border-radius: 8px;\n            text-align: center;\n        }\n        .recommendation {\n            background: #fff3cd;\n            border: 1px solid #ffeaa7;\n            padding: 20px;\n            border-radius: 10px;\n            margin-top: 20px;\n        }\n        @media print {\n            body { background: white; }\n            .container { box-shadow: none; }\n        }\n    </style>\n    <script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>{{jsonPath request.body '$.title'}}</h1>\n        \n        <div class=\"analysis-content\">\n            <h2>CBIL 7단계 분석 결과</h2>\n            \n            <div class=\"stage\">\n                <h3>1. Engage (흥미 유도 및 연결)</h3>\n                <p>수업 초반에 교사는 학생들에게 시를 낭송하며 흥미를 유도했다. 학생들은 시를 따라 읽으며 참여했으나, 정서적·지적 호기심을 유도하는 데 있어 개념과의 명확한 연결은 부족했다.</p>\n                <div class=\"score\">점수: 1점</div>\n            </div>\n            \n            <div class=\"stage\">\n                <h3>2. Focus (탐구 방향 설정)</h3>\n                <p>교사는 이육사의 시와 관련된 질문을 던졌으나, 질문이 주로 감상 중심이었다. 개념 중심 사고를 유도하는 본질적 질문이 부족했다.</p>\n                <div class=\"score\">점수: 1점</div>\n            </div>\n            \n            <div class=\"chart-container interactive-element\" onclick=\"showDetailedAnalysis()\">\n                <canvas id=\"cbilChart\" width=\"600\" height=\"400\"></canvas>\n            </div>\n            \n            <div class=\"stage\">\n                <h3>3. Investigate (자료 탐색 및 개념 형성)</h3>\n                <p>학생들은 시를 읽고 감상하는 활동을 했으나, 개념의 속성이나 조건을 탐색하는 활동은 부족했다.</p>\n                <div class=\"score\">점수: 1점</div>\n            </div>\n            \n            <svg class=\"interactive-element\" width=\"100%\" height=\"200\" style=\"margin: 20px 0;\">\n                <rect width=\"100%\" height=\"200\" fill=\"url(#gradient)\" rx=\"10\"/>\n                <defs>\n                    <linearGradient id=\"gradient\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">\n                        <stop offset=\"0%\" style=\"stop-color:#667eea;stop-opacity:1\" />\n                        <stop offset=\"100%\" style=\"stop-color:#764ba2;stop-opacity:1\" />\n                    </linearGradient>\n                </defs>\n                <text x=\"50%\" y=\"50%\" text-anchor=\"middle\" dy=\".3em\" fill=\"white\" font-size=\"18\" font-weight=\"bold\">\n                    인터랙티브 분석 차트\n                </text>\n            </svg>\n        </div>\n        \n        <div class=\"statistics\">\n            <h2 style=\"color: white; border-left: 4px solid white;\">분석 통계</h2>\n            <div class=\"stats-grid\">\n                <div class=\"stat-item\">\n                    <h3>문자 수</h3>\n                    <p style=\"font-size: 24px; font-weight: bold;\">{{jsonPath request.body '$.analysis_result.character_count'}}</p>\n                </div>\n                <div class=\"stat-item\">\n                    <h3>단어 수</h3>\n                    <p style=\"font-size: 24px; font-weight: bold;\">{{jsonPath request.body '$.analysis_result.word_count'}}</p>\n                </div>\n                <div class=\"stat-item\">\n                    <h3>생성일</h3>\n                    <p>{{jsonPath request.body '$.analysis_result.created_at'}}</p>\n                </div>\n                <div class=\"stat-item\">\n                    <h3>프레임워크</h3>\n                    <p>{{jsonPath request.body '$.analysis_result.framework_name'}}</p>\n                </div>\n            </div>\n        </div>\n        \n        <div class=\"recommendation\">\n            <h3>개선 권장사항</h3>\n            <ul>\n                <li>학생들의 호기심을 자극하는 개방형 질문 개발</li>\n                <li>개념 중심 사고를 유도하는 본질적 질문 활용</li>\n                <li>학생 주도적 탐구 활동 설계</li>\n                <li>개념 간 연결성을 강화하는 활동 추가</li>\n            </ul>\n        </div>\n    </div>\n    \n    <script>\n        // Interactive chart\n        function showDetailedAnalysis() {\n            alert('상세 분석 차트를 표시합니다.');\n        }\n        \n        // Chart.js initialization\n        document.addEventListener('DOMContentLoaded', function() {\n            const ctx = document.getElementById('cbilChart').getContext('2d');\n            new Chart(ctx, {\n                type: 'radar',\n                data: {\n                    labels: ['Engage', 'Focus', 'Investigate', 'Organize', 'Generalize', 'Transfer', 'Reflect'],\n                    datasets: [{\n                        label: 'CBIL 점수',\n                        data: [1, 1, 1, 1, 0, 1, 1],\n                        backgroundColor: 'rgba(102, 126, 234, 0.2)',\n                        borderColor: 'rgba(102, 126, 234, 1)',\n                        pointBackgroundColor: 'rgba(102, 126, 234, 1)',\n                        pointBorderColor: '#fff',\n                        pointHoverBackgroundColor: '#fff',\n                        pointHoverBorderColor: 'rgba(102, 126, 234, 1)'\n                    }]\n                },\n                options: {\n                    responsive: true,\n                    scales: {\n                        r: {\n                            angleLines: { display: false },\n                            suggestedMin: 0,\n                            suggestedMax: 3\n                        }\n                    }\n                }\n            });\n        });\n    </script>\n</body>\n</html>",
+        "fixedDelayMilliseconds": 1500
+      }
+    },
+    {
+      "name": "Generate Summary HTML Report",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/reports/generate/html",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.template",
+            "equalTo": "summary"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/html; charset=utf-8"
+        },
+        "body": "<!DOCTYPE html>\n<html lang=\"ko\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>{{jsonPath request.body '$.title'}}</title>\n    <style>\n        body {\n            font-family: 'Noto Sans KR', Arial, sans-serif;\n            line-height: 1.6;\n            color: #333;\n            max-width: 800px;\n            margin: 0 auto;\n            padding: 20px;\n            background: #f8f9fa;\n        }\n        .container {\n            background: white;\n            border-radius: 10px;\n            box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n            padding: 30px;\n        }\n        h1 {\n            color: #2c3e50;\n            text-align: center;\n            border-bottom: 2px solid #3498db;\n            padding-bottom: 15px;\n            margin-bottom: 25px;\n        }\n        h2 {\n            color: #34495e;\n            border-left: 3px solid #3498db;\n            padding-left: 15px;\n        }\n        .summary-section {\n            background: #f8f9fa;\n            padding: 20px;\n            border-radius: 8px;\n            margin: 15px 0;\n        }\n        .score-summary {\n            background: linear-gradient(45deg, #667eea, #764ba2);\n            color: white;\n            padding: 20px;\n            border-radius: 8px;\n            text-align: center;\n            margin: 20px 0;\n        }\n        .recommendations {\n            background: #fff3cd;\n            border-left: 4px solid #ffc107;\n            padding: 20px;\n            margin: 20px 0;\n        }\n        ul {\n            padding-left: 20px;\n        }\n        li {\n            margin-bottom: 8px;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>{{jsonPath request.body '$.title'}}</h1>\n        \n        <div class=\"summary-section\">\n            <h2>핵심 분석 결과</h2>\n            <p><strong>프레임워크:</strong> {{jsonPath request.body '$.analysis_result.framework_name'}}</p>\n            <p><strong>분석 일시:</strong> {{jsonPath request.body '$.analysis_result.created_at'}}</p>\n            \n            <h3>CBIL 7단계 요약</h3>\n            <ul>\n                <li><strong>Engage (흥미 유도):</strong> 1점 - 개선 필요</li>\n                <li><strong>Focus (탐구 방향):</strong> 1점 - 개선 필요</li>\n                <li><strong>Investigate (자료 탐색):</strong> 1점 - 개선 필요</li>\n                <li><strong>Organize (개념 구조화):</strong> 1점 - 개선 필요</li>\n                <li><strong>Generalize (일반화):</strong> 0점 - 미흡</li>\n                <li><strong>Transfer (전이):</strong> 1점 - 개선 필요</li>\n                <li><strong>Reflect (성찰):</strong> 1점 - 개선 필요</li>\n            </ul>\n        </div>\n        \n        <div class=\"score-summary\">\n            <h2 style=\"color: white; margin: 0;\">총점: 6점 / 21점 (29%)</h2>\n            <p style=\"margin: 10px 0 0 0;\">CBIL 적용도가 낮아 개념기반 탐구학습으로의 전환이 필요합니다.</p>\n        </div>\n        \n        <div class=\"summary-section\">\n            <h3>주요 특징</h3>\n            <ul>\n                <li>전통적 강의식 수업 진행</li>\n                <li>교사 중심의 일방향적 설명</li>\n                <li>학생의 능동적 탐구 활동 부족</li>\n                <li>개념 간 연결성 구축 미흡</li>\n            </ul>\n        </div>\n        \n        <div class=\"recommendations\">\n            <h3>즉시 개선 가능한 사항</h3>\n            <ul>\n                <li>수업 도입 시 학생들의 호기심을 자극하는 문제 상황 제시</li>\n                <li>개방형 질문을 통한 학생 사고 유도</li>\n                <li>소그룹 탐구 활동 도입</li>\n                <li>학생들의 성찰 활동 강화</li>\n            </ul>\n        </div>\n        \n        <div class=\"summary-section\">\n            <h3>장기 개선 계획</h3>\n            <p>개념기반 탐구학습(CBIL)의 7단계를 체계적으로 적용하여 학생 중심의 수업으로 전환하는 것이 필요합니다. 특히 Engage와 Generalize 단계의 강화가 우선되어야 합니다.</p>\n        </div>\n    </div>\n</body>\n</html>",
+        "fixedDelayMilliseconds": 1000
+      }
+    },
+    {
+      "name": "Report Generation Error",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/reports/generate/html",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.analysis_result.analysis_id",
+            "contains": "error"
+          }
+        ]
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "detail": "Report generation failed due to template processing error"
+        }
+      }
+    },
+    {
+      "name": "Slow Report Generation",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/reports/generate/html",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.analysis_result.analysis_id",
+            "contains": "slow"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/html; charset=utf-8"
+        },
+        "body": "<!DOCTYPE html>\n<html>\n<head><title>Slow Generated Report</title></head>\n<body><h1>Report generated after delay</h1><p>This report was generated with intentional delay for testing purposes.</p></body>\n</html>",
+        "fixedDelayMilliseconds": 5000
+      }
+    }
+  ]
+}

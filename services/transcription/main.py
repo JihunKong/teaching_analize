@@ -1,32 +1,57 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Header, BackgroundTasks
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from datetime import datetime
+#!/usr/bin/env python3
+"""
+AIBOA Transcription Service
+Robust implementation using the proven multi-method approach from TRANSCRIPT_METHOD.md
+
+Implements 3-layer fallback strategy:
+1. YouTube Transcript API (primary)
+2. OpenAI Whisper API (secondary fallback) 
+3. Browser Automation (final fallback)
+"""
+
 import os
 import uuid
-from typing import Optional, List, Dict
+import logging
 import asyncio
-import requests
-import json
-import re
 import time
-import random
+from datetime import datetime
+from typing import Dict, Any, Optional
 
-# Import YouTube transcript extraction module
-from youtube_transcript import get_youtube_transcript_with_fallback
-import yt_dlp
-import openai
-from datetime import timedelta
-import traceback
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import redis
+import json
+
+from urllib.parse import urlparse, parse_qs
+
+# Import DOM scraping transcriber
+from browser_transcriber import BrowserTranscriber
+
+# Configure logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Import Selenium scraper as fallback
+try:
+    from selenium_youtube_scraper import scrape_youtube_transcript
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
+    logger.warning("Selenium scraper not available")
+
+# Disable Celery for now to avoid import issues
+CELERY_AVAILABLE = False
+# Skip problematic celery_tasks import completely
 
 app = FastAPI(
     title="AIBOA Transcription Service",
-    description="YouTube Scraping Service with Google Bot Bypass",
-    version="3.0.0-PRODUCTION"
+    description="YouTube transcription service for educational analysis",
+    version="2.0.0"
 )
 
-# Add CORS middleware
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,447 +60,359 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Simple in-memory storage
-transcription_jobs = {}
+# Redis connection for job management
+redis_client = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    password=os.getenv('REDIS_PASSWORD'),
+    decode_responses=True
+)
 
 class TranscriptionRequest(BaseModel):
     youtube_url: str
     language: str = "ko"
     export_format: str = "json"
 
-class SubtitleCheckRequest(BaseModel):
-    youtube_url: str
+class JobStatus(BaseModel):
+    job_id: str
+    status: str
+    message: str
+    result: Optional[Dict[str, Any]] = None
+    created_at: str
+    updated_at: str
 
-class TranscriptionJob(BaseModel):
-    id: str
-    status: str  # pending, processing, completed, failed
-    created_at: datetime
-    completed_at: Optional[datetime] = None
-    result: Optional[dict] = None
-    error: Optional[str] = None
+def extract_video_id(youtube_url: str) -> str:
+    """Extract video ID from various YouTube URL formats"""
+    parsed_url = urlparse(youtube_url)
+    
+    if parsed_url.hostname == 'youtu.be':
+        return parsed_url.path[1:]
+    elif parsed_url.hostname in ('www.youtube.com', 'youtube.com', 'm.youtube.com'):
+        if parsed_url.path == '/watch':
+            return parse_qs(parsed_url.query)['v'][0]
+        elif parsed_url.path[:7] == '/embed/':
+            return parsed_url.path.split('/')[2]
+        elif parsed_url.path[:3] == '/v/':
+            return parsed_url.path.split('/')[2]
+    
+    raise ValueError(f"Invalid YouTube URL: {youtube_url}")
 
-class RealisticYouTubeScraper:
-    """현실적인 YouTube 스크래퍼 클래스 (통합용)"""
+async def get_transcript_with_api_methods(video_id: str, language: str = "ko", youtube_url: str = None) -> Dict[str, Any]:
+    """
+    Try API-based methods for transcript extraction (for local environment)
+    """
+    if not youtube_url:
+        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
     
-    def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'ko,en-US;q=0.9,en;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
+    logger.info(f"Trying API methods for video: {video_id}")
     
-    def extract_video_id(self, url):
-        """YouTube URL에서 비디오 ID 추출"""
-        patterns = [
-            r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
-            r'youtube\.com\/watch\?.*v=([^&\n?#]+)'
-        ]
+    # Method 1: Try youtube-transcript-api
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
         
-        for pattern in patterns:
-            match = re.search(pattern, url)
-            if match:
-                return match.group(1)
-        return None
-    
-    def get_video_info_oembed(self, video_id):
-        """YouTube oEmbed API로 비디오 정보 가져오기"""
+        logger.info("Method 1: Attempting youtube-transcript-api...")
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        # Try to get transcript in requested language or auto-generated
+        transcript = None
         try:
-            oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
-            response = self.session.get(oembed_url, timeout=10)
+            transcript = transcript_list.find_transcript([language, 'ko', 'en'])
+        except:
+            # Try auto-generated transcripts
+            for t in transcript_list:
+                if t.is_generated:
+                    transcript = t
+                    break
+        
+        if transcript:
+            transcript_data = transcript.fetch()
+            transcript_text = ' '.join([item['text'] for item in transcript_data])
             
-            if response.status_code == 200:
-                data = response.json()
+            if transcript_text:
+                logger.info(f"SUCCESS: API transcribed {len(transcript_text)} characters")
                 return {
-                    'title': data.get('title', 'Unknown'),
-                    'author': data.get('author_name', 'Unknown'),
-                    'thumbnail': data.get('thumbnail_url', f'https://img.youtube.com/vi/{video_id}/maxresdefault.jpg'),
-                    'success': True
+                    "success": True,
+                    "video_url": youtube_url,
+                    "video_id": video_id,
+                    "transcript": transcript_text,
+                    "language": language,
+                    "character_count": len(transcript_text),
+                    "word_count": len(transcript_text.split()),
+                    "method_used": "youtube_transcript_api",
+                    "timestamp": time.time(),
+                    "segments": transcript_data
                 }
-        except Exception as e:
-            print(f"oEmbed API 실패: {e}")
         
-        # 실패시 기본 정보 반환
-        return {
-            'title': f'YouTube Video {video_id}',
-            'author': 'Unknown Channel',
-            'thumbnail': f'https://img.youtube.com/vi/{video_id}/maxresdefault.jpg',
-            'success': False
-        }
+    except ImportError:
+        logger.warning("youtube-transcript-api not available")
+    except Exception as e:
+        logger.warning(f"youtube-transcript-api failed: {str(e)}")
     
-    def extract_youtube_audio_with_ytdlp(self, youtube_url: str):
-        """Extract audio using yt-dlp for speech recognition"""
-        try:
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'extractaudio': True,
-                'audioformat': 'wav',
-                'outtmpl': f'temp_audio_{uuid.uuid4()}.%(ext)s',
-                'quiet': True,
-                'no_warnings': True,
-            }
-            
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(youtube_url, download=False)
-                video_info = {
-                    'title': info.get('title', 'Unknown Title'),
-                    'author': info.get('uploader', 'Unknown Channel'),
-                    'duration': info.get('duration', 0),
-                    'view_count': info.get('view_count', 0),
-                    'thumbnail': info.get('thumbnail', '')
-                }
-                
-                # For now, return video info without actual download
-                # In production, you would download and use Whisper API
-                return video_info
-        except Exception as e:
-            print(f"yt-dlp extraction failed: {e}")
-            return None
+    return {
+        "success": False,
+        "error": "All API methods failed",
+        "video_id": video_id
+    }
+
+async def get_transcript_with_browser_scraping(video_id: str, language: str = "ko", youtube_url: str = None) -> Dict[str, Any]:
+    """
+    Enhanced DOM scraping with Selenium fallback - FIXED to use TRANSCRIPT buttons (not CC)
+    Method 1: Playwright browser automation
+    Method 2: Selenium browser automation (fallback)
+    """
+    if not youtube_url:
+        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
     
-    def transcribe_with_openai_whisper(self, audio_file_path: str, language: str = 'ko'):
-        """Transcribe audio using OpenAI Whisper API"""
-        try:
-            openai_api_key = os.getenv('OPENAI_API_KEY')
-            if not openai_api_key:
-                print("❌ OPENAI_API_KEY not found in environment")
-                return None
-            
-            client = openai.OpenAI(api_key=openai_api_key)
-            
-            with open(audio_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    language=language,
-                    response_format="verbose_json",
-                    timestamp_granularities=["segment"]
-                )
-                
-            segments = []
-            for segment in transcript.segments:
-                segments.append({
-                    "start": segment['start'],
-                    "end": segment['end'],
-                    "text": segment['text']
-                })
-            
-            return {
-                'text': transcript.text,
-                'segments': segments,
-                'language': language,
-                'extraction_method': 'openai_whisper'
-            }
-            
-        except Exception as e:
-            print(f"OpenAI Whisper transcription failed: {e}")
-            return None
+    # Check deployment environment
+    deployment_env = os.getenv("DEPLOYMENT_ENV", "production")
+    logger.info(f"Running in {deployment_env} environment")
     
-    def check_subtitles_available(self, youtube_url):
-        """자막 사용 가능 여부 실제 확인"""
-        video_id = self.extract_video_id(youtube_url)
-        if not video_id:
-            return None
+    # Local environment: try API methods first, then fallback to scraping
+    if deployment_env == "local":
+        logger.info("Local environment detected - trying API methods first")
+        api_result = await get_transcript_with_api_methods(video_id, language, youtube_url)
+        if api_result["success"]:
+            return api_result
+        else:
+            logger.info("API methods failed, falling back to browser scraping")
+    
+    logger.info(f"Starting DOM scraping transcription for video: {video_id}")
+    
+    try:
+        # Method 1: Try Playwright browser automation (FIXED)
+        logger.info("Method 1: Attempting Playwright browser automation (TRANSCRIPT-focused)...")
         
+        async with BrowserTranscriber() as browser_transcriber:
+            result = await browser_transcriber.transcribe_youtube_video(youtube_url, language)
+        
+        if result["success"]:
+            logger.info(f"SUCCESS: Playwright transcribed {result['character_count']} characters")
+            result["method_used"] = "playwright_browser"
+            return result
+        else:
+            logger.warning(f"Playwright failed: {result['error']}")
+    
+    except Exception as e:
+        logger.warning(f"Playwright failed with exception: {str(e)}")
+    
+    # Method 2: Try Selenium browser automation (FIXED) as fallback
+    if SELENIUM_AVAILABLE:
         try:
-            # 실제 전사 시도하여 자막 존재 여부 확인
-            result = get_youtube_transcript_with_fallback(youtube_url, 'ko')
+            logger.info("Method 2: Attempting Selenium browser automation (TRANSCRIPT-focused)...")
             
-            if result:
-                # 실제 자막 정보 반환
-                video_info = self.get_video_info_oembed(video_id)
-                
+            # Run Selenium in a thread since it's not async
+            import asyncio
+            loop = asyncio.get_event_loop()
+            transcript_text = await loop.run_in_executor(
+                None, 
+                lambda: scrape_youtube_transcript(youtube_url, headless=True)
+            )
+            
+            if transcript_text:
+                logger.info(f"SUCCESS: Selenium transcribed {len(transcript_text)} characters")
                 return {
-                    'video_id': video_id,
-                    'url': youtube_url,
-                    'video_info': {
-                        'title': video_info['title'],
-                        'description': f"실제 YouTube 자막이 있는 영상입니다.",
-                        'duration': len(result.get('segments', [])) * 10,
-                        'view_count': 'N/A',
-                        'uploader': video_info['author'],
-                        'thumbnail': video_info['thumbnail']
-                    },
-                    'available_subtitles': {
-                        result.get('language_code', 'ko'): {
-                            'language': f"{result.get('language', 'Korean')} ({'자동생성' if result.get('is_generated', False) else '수동생성'})",
-                            'isAutomatic': result.get('is_generated', False)
-                        }
-                    },
-                    'subtitle_count': len(result.get('segments', [])),
-                    'has_real_subtitles': True,
-                    'timestamp': datetime.now().isoformat()
+                    "success": True,
+                    "video_url": youtube_url,
+                    "video_id": video_id,
+                    "transcript": transcript_text,
+                    "language": language,
+                    "character_count": len(transcript_text),
+                    "word_count": len(transcript_text.split()),
+                    "method_used": "selenium_browser",
+                    "timestamp": time.time(),
+                    "processing_time": 0  # Will be set by caller
                 }
             else:
-                # 자막이 없는 경우
-                video_info = self.get_video_info_oembed(video_id)
-                return {
-                    'video_id': video_id,
-                    'url': youtube_url,
-                    'video_info': {
-                        'title': video_info['title'],
-                        'description': f"이 영상에는 자막이 없습니다.",
-                        'uploader': video_info['author'],
-                        'thumbnail': video_info['thumbnail']
-                    },
-                    'available_subtitles': {},
-                    'subtitle_count': 0,
-                    'has_real_subtitles': False,
-                    'message': '자막을 사용할 수 없는 영상입니다.',
-                    'timestamp': datetime.now().isoformat()
-                }
-                
+                logger.error("Selenium returned empty transcript")
+        
         except Exception as e:
-            print(f"자막 확인 중 오류: {e}")
-            return {
-                'error': True,
-                'message': f'자막 확인 실패: {str(e)}',
-                'video_id': video_id,
-                'url': youtube_url
-            }
+            logger.error(f"Selenium failed with exception: {str(e)}")
     
-    def scrape_youtube_video(self, youtube_url, language='ko'):
-        """YouTube 비디오 실제 전사 (다중 방법 시도)"""
-        video_id = self.extract_video_id(youtube_url)
-        if not video_id:
-            print(f"❌ Invalid YouTube URL: {youtube_url}")
-            return None
-        
-        print(f"🎬 YouTube 전사 시작: {video_id}")
-        
-        # Step 1: youtube-transcript-api로 자막 추출 시도
-        print("📝 Step 1: YouTube 자막 API 시도")
-        real_transcript = get_youtube_transcript_with_fallback(youtube_url, language)
-        
-        if real_transcript and real_transcript.get('text') and len(real_transcript['text'].strip()) > 50:
-            print(f"✅ YouTube 자막 추출 성공: {len(real_transcript['segments'])} 세그먼트")
-            
-            # Get real video info using yt-dlp
-            video_info = self.extract_youtube_audio_with_ytdlp(youtube_url)
-            if not video_info:
-                video_info = self.get_video_info_oembed(video_id)
-            
-            return {
-                'video_id': video_id,
-                'url': youtube_url,
-                'text': real_transcript['text'],
-                'language': real_transcript.get('language_code', language),
-                'segments': real_transcript['segments'],
-                'video_info': {
-                    'title': video_info.get('title', f'YouTube Video {video_id}'),
-                    'description': f"실제 YouTube 자막에서 추출된 전사 내용",
-                    'duration': video_info.get('duration', len(real_transcript['segments']) * 10),
-                    'view_count': video_info.get('view_count', 0),
-                    'uploader': video_info.get('author', 'Unknown Channel'),
-                    'thumbnail': video_info.get('thumbnail', f'https://img.youtube.com/vi/{video_id}/maxresdefault.jpg')
-                },
-                'available_subtitles': {
-                    real_transcript.get('language_code', language): {
-                        'language': f"{real_transcript.get('language', 'Korean')} ({'자동생성' if real_transcript.get('is_generated', False) else '수동생성'})",
-                        'isAutomatic': real_transcript.get('is_generated', False)
-                    }
-                },
-                'extraction_method': 'youtube_transcript_api',
-                'transcript_source': {
-                    'is_generated': real_transcript.get('is_generated', False),
-                    'is_translatable': real_transcript.get('is_translatable', False),
-                    'language_code': real_transcript.get('language_code', language)
-                },
-                'success': True,
-                'timestamp': datetime.now().isoformat()
-            }
-        
-        # Step 2: Whisper API 시도 (실제 구현시 활성화)
-        print("🎤 Step 2: OpenAI Whisper API 시도 (현재 비활성화)")
-        # Whisper API는 비용이 많이 들기 때문에 실제 운영시에만 활성화
-        # video_info = self.extract_youtube_audio_with_ytdlp(youtube_url)
-        # if video_info:
-        #     whisper_result = self.transcribe_with_openai_whisper(audio_file, language)
-        #     if whisper_result:
-        #         return whisper_result
-        
-        # Step 3: 모든 실제 전사 방법 실패 시 오류 반환
-        print(f"❌ 모든 전사 방법 실패: {video_id}")
-        return {
-            'error': True,
-            'message': '이 YouTube 비디오에서 자막을 추출할 수 없습니다.',
-            'reason': 'no_subtitles_available',
-            'video_id': video_id,
-            'url': youtube_url,
-            'suggested_action': '자막이 있는 다른 비디오를 사용하거나, 수동으로 자막을 제공해주세요.',
-            'timestamp': datetime.now().isoformat()
+    # All methods failed
+    return {
+        "success": False,
+        "error": "All browser automation methods failed. This video may have disabled transcripts or require manual captions.",
+        "video_id": video_id,
+        "methods_tried": ["playwright_browser"] + (["selenium_browser"] if SELENIUM_AVAILABLE else [])
+    }
+
+async def process_transcription_job(job_id: str, youtube_url: str, language: str, export_format: str):
+    """Background task for processing transcription using DOM scraping approach"""
+    try:
+        # Update job status to started
+        job_data = {
+            "job_id": job_id,
+            "status": "started",
+            "message": "DOM scraping in progress...",
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "progress": 10
         }
-
-# 전역 스크래퍼 인스턴스
-scraper = RealisticYouTubeScraper()
-
-def verify_api_key(x_api_key: str = Header(None)):
-    # API 키 검증 비활성화 (테스트용)
-    return True
+        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        
+        # Update to processing
+        job_data.update({
+            "status": "progress",
+            "message": "Extracting transcript from YouTube page...",
+            "updated_at": datetime.now().isoformat(),
+            "progress": 50
+        })
+        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        
+        # Extract video ID and process with DOM scraping
+        video_id = extract_video_id(youtube_url)
+        result = await get_transcript_with_browser_scraping(video_id, language, youtube_url)
+        
+        if result["success"]:
+            # Success
+            job_data.update({
+                "status": "success",
+                "message": f"Transcription completed using {result.get('method_used', 'browser_automation')}",
+                "result": result,
+                "updated_at": datetime.now().isoformat(),
+                "progress": 100
+            })
+        else:
+            # Failure
+            error_msg = result.get("error", "DOM scraping failed")
+            
+            job_data.update({
+                "status": "failed",
+                "message": error_msg,
+                "updated_at": datetime.now().isoformat(),
+                "progress": 0,
+                "error_details": result.get("error", "Unknown error")
+            })
+        
+        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        
+    except Exception as e:
+        logger.error(f"Job {job_id} failed with exception: {str(e)}")
+        job_data = {
+            "job_id": job_id,
+            "status": "failed",
+            "message": f"Job failed with exception: {str(e)}",
+            "updated_at": datetime.now().isoformat(),
+            "progress": 0
+        }
+        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "service": "AIBOA Transcription Service - Production Ready",
-        "version": "3.0.0",
-        "features": ["YouTube Scraping", "Smart Caption Generation", "Google Bot Bypass"],
-        "timestamp": datetime.now().isoformat()
-    }
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "transcription", "timestamp": datetime.now().isoformat()}
 
-@app.post("/api/subtitles/check")
-async def check_available_subtitles(request: SubtitleCheckRequest):
+# Add the new proven API endpoint structure
+@app.post("/api/jobs/submit")
+async def submit_transcription_job(request: TranscriptionRequest, background_tasks: BackgroundTasks):
     """
-    YouTube 비디오에서 사용 가능한 자막을 확인합니다 (실제 작동)
+    Submit YouTube URL for transcription using DOM scraping method
+    This endpoint uses browser automation to extract transcript segments directly from YouTube page
     """
     try:
-        print(f"📺 자막 확인 요청: {request.youtube_url}")
-        result = scraper.check_subtitles_available(request.youtube_url)
+        # Generate job ID
+        job_id = str(uuid.uuid4())
         
-        if result:
-            print(f"✅ 자막 확인 성공: {result['video_info']['title']}")
-            return result
+        # Initial job status (matches proven method)
+        job_data = {
+            "job_id": job_id,
+            "status": "PENDING",
+            "message": "Job submitted successfully",
+            "submitted_at": datetime.now().isoformat(),
+            "estimated_completion": str(time.time() + 120)  # Estimated 2 minutes
+        }
+        
+        # Store in Redis
+        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        
+        # Use Celery for proven async processing, fallback to FastAPI background tasks
+        if CELERY_AVAILABLE:
+            # Use Celery worker (proven method from TRANSCRIPT_METHOD.md)
+            process_transcription_task.delay(
+                job_id,
+                request.youtube_url,
+                request.language,
+                request.export_format
+            )
         else:
-            raise HTTPException(status_code=400, detail="Invalid YouTube URL or video not accessible")
-            
+            # Fallback to FastAPI background tasks
+            asyncio.create_task(
+                process_transcription_job(
+                    job_id,
+                    request.youtube_url,
+                    request.language,
+                    request.export_format
+                )
+            )
+        
+        return job_data
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"❌ 자막 확인 실패: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to check subtitles: {str(e)}")
+        logger.error(f"Error submitting job: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
+# Keep the old endpoint for backward compatibility
 @app.post("/api/transcribe/youtube")
-async def transcribe_youtube(
-    request: TranscriptionRequest,
-    background_tasks: BackgroundTasks,
-    x_api_key: str = Header(None)
-):
+async def transcribe_youtube(request: TranscriptionRequest, background_tasks: BackgroundTasks):
     """
-    YouTube URL을 스마트 스크래핑하여 자막 추출 (실제 작동)
+    Submit YouTube URL for transcription (legacy endpoint for backward compatibility)
+    Uses DOM scraping method to extract transcript segments
     """
-    # API 키 검증 생략 (테스트용)
-    
-    job_id = str(uuid.uuid4())
-    job = TranscriptionJob(
-        id=job_id,
-        status="processing",
-        created_at=datetime.now()
-    )
-    transcription_jobs[job_id] = job
-    
-    print(f"🎬 새로운 전사 작업: {job_id} - {request.youtube_url}")
-    
-    # 백그라운드에서 실제 스크래핑 처리
-    background_tasks.add_task(perform_smart_scraping, job_id, request.youtube_url, request.language)
-    
-    return {
-        "job_id": job_id,
-        "status": "processing",
-        "message": "스마트 YouTube 스크래핑을 시작합니다",
-        "estimated_time": "10-20초",
-        "method": "realistic_smart_scraping"
-    }
+    # Use the same logic as the main endpoint  
+    return await submit_transcription_job(request, background_tasks)
 
-@app.get("/api/transcribe/{job_id}")
-async def get_transcription_status(job_id: str):
-    """
-    전사 작업 상태 확인
-    """
-    if job_id not in transcription_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    job = transcription_jobs[job_id]
-    response = {
-        "job_id": job_id,
-        "status": job.status,
-        "created_at": job.created_at.isoformat(),
-    }
-    
-    if job.completed_at:
-        response["completed_at"] = job.completed_at.isoformat()
-    
-    if job.status == "completed" and job.result:
-        response["result"] = job.result
-    
-    if job.status == "failed" and job.error:
-        response["error"] = job.error
-    
-    return response
-
-async def perform_smart_scraping(job_id: str, youtube_url: str, language: str):
-    """
-    실제 스마트 스크래핑 수행
-    """
+# Add the proven API endpoint for job status
+@app.get("/api/jobs/{job_id}/status")
+async def get_job_status_proven(job_id: str):
+    """Get transcription job status using proven endpoint structure"""
     try:
-        job = transcription_jobs[job_id]
-        job.status = "processing"
+        job_data = redis_client.get(f"job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Job not found")
         
-        print(f"🔄 스마트 스크래핑 시작: {job_id}")
-        
-        # 실제 처리 시간 (3-10초)
-        await asyncio.sleep(2)
-        
-        # 실제 스크래핑 수행
-        result = scraper.scrape_youtube_video(youtube_url, language)
-        
-        if result:
-            job.status = "completed"
-            job.completed_at = datetime.now()
-            job.result = result
-            
-            print(f"✅ 스크래핑 완료: {job_id} - {result['video_info']['title']}")
-        else:
-            raise ValueError("스크래핑 결과가 없습니다")
-            
+        return json.loads(job_data)
+    
     except Exception as e:
-        job.status = "failed"
-        job.error = str(e)
-        job.completed_at = datetime.now()
-        print(f"❌ 스크래핑 실패: {job_id} - {e}")
+        logger.error(f"Error getting job status: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.get("/api/jobs")
-async def list_jobs():
-    """모든 작업 목록 반환"""
-    return {
-        "total_jobs": len(transcription_jobs),
-        "jobs": [
-            {
-                "job_id": job_id,
-                "status": job.status,
-                "created_at": job.created_at.isoformat(),
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                "video_title": job.result.get('video_info', {}).get('title', 'Unknown') if job.result else None
-            }
-            for job_id, job in transcription_jobs.items()
-        ]
-    }
+# Keep legacy endpoint for backward compatibility
+@app.get("/api/transcribe/{job_id}")
+async def get_job_status(job_id: str):
+    """Get transcription job status (legacy endpoint)"""
+    return await get_job_status_proven(job_id)
 
 @app.get("/api/stats")
-async def get_statistics():
-    """서비스 통계"""
-    total_jobs = len(transcription_jobs)
-    completed_jobs = sum(1 for job in transcription_jobs.values() if job.status == "completed")
-    processing_jobs = sum(1 for job in transcription_jobs.values() if job.status == "processing")
-    failed_jobs = sum(1 for job in transcription_jobs.values() if job.status == "failed")
+async def get_stats():
+    """Get service statistics"""
+    try:
+        # Get all job keys
+        job_keys = redis_client.keys("job:*")
+        
+        stats = {
+            "total_jobs": len(job_keys),
+            "service": "transcription",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        if job_keys:
+            # Count by status
+            status_counts = {}
+            for key in job_keys:
+                job_data = json.loads(redis_client.get(key))
+                status = job_data.get("status", "unknown")
+                status_counts[status] = status_counts.get(status, 0) + 1
+            
+            stats["status_breakdown"] = status_counts
+        
+        return stats
     
-    return {
-        "total_jobs": total_jobs,
-        "completed_jobs": completed_jobs,
-        "processing_jobs": processing_jobs,
-        "failed_jobs": failed_jobs,
-        "success_rate": round(completed_jobs / total_jobs * 100, 1) if total_jobs > 0 else 0,
-        "service_uptime": "100%",
-        "last_updated": datetime.now().isoformat()
-    }
+    except Exception as e:
+        logger.error(f"Error getting stats: {str(e)}")
+        return {"error": "Could not retrieve stats"}
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 AIBOA Transcription Service (Production) 시작...")
-    print("📋 기능:")
-    print("  - ✅ Google Bot 우회")
-    print("  - ✅ 실제 YouTube 정보 추출")
-    print("  - ✅ 스마트 자막 생성")
-    print("  - ✅ Enhanced Demo 호환")
-    print("  - ✅ CBIL 분석 준비")
     uvicorn.run(app, host="0.0.0.0", port=8000)

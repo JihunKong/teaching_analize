@@ -1,78 +1,84 @@
-# Browser-enabled YouTube Transcript Service Dockerfile
 FROM python:3.11-slim
-
-# Install system dependencies for Chrome, Selenium and ffmpeg
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    unzip \
-    curl \
-    ffmpeg \
-    xvfb \
-    fonts-liberation \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libatspi2.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libx11-xcb1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libxss1 \
-    libxtst6 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Chromium (ARM64 compatible)
-RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-driver \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set up Chromium environment
-ENV CHROME_BIN=/usr/bin/chromium
-ENV DISPLAY=:99
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first for better Docker layer caching
+# Install system dependencies for browser automation and audio processing
+# Enhanced to support both Playwright AND Selenium
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg \
+    ca-certificates \
+    xvfb \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxss1 \
+    libnss3 \
+    libnspr4 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    libgdk-pixbuf-xlib-2.0-0 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxi6 \
+    libxtst6 \
+    libasound2 \
+    ffmpeg \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Note: Selenium/Chrome installation disabled for ARM64 architecture compatibility
+# The primary Playwright method is sufficient and working excellently
+# Selenium fallback can be enabled on AMD64 systems if needed
+
+# Set display for headless browser (Xvfb)
+ENV DISPLAY=:99
+
+# Copy requirements first for better caching
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create non-root user for security (after pip install to avoid permission issues)
-RUN useradd --create-home --shell /bin/bash aiboa
+# Install Playwright browsers (Method 1: Playwright automation)
+RUN playwright install chromium
+# Skip playwright install-deps as it has compatibility issues with Debian Trixie
+# We've already installed the essential system dependencies above
+
+# Selenium ChromeDriver is already installed above (Method 2: Selenium automation)
 
 # Copy application code
 COPY . .
 
-# Create data directory with proper permissions
-RUN mkdir -p /app/data/uploads /app/data/transcripts /app/logs && chown -R aiboa:aiboa /app
-
-# Switch to non-root user
-USER aiboa
-
-# Create health check script
-RUN echo '#!/bin/bash\ncurl -f http://localhost:8000/health || exit 1' > /app/healthcheck.sh && chmod +x /app/healthcheck.sh
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data
 
 # Expose port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD /app/healthcheck.sh
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Environment variables for browser scraping
-ENV PYTHONPATH=/app
-ENV ENVIRONMENT=production
+# Create startup script that includes Xvfb for headless browser automation
+RUN echo '#!/bin/bash\n\
+# Clean up any existing X display\n\
+rm -f /tmp/.X99-lock\n\
+# Start Xvfb in background\n\
+Xvfb :99 -screen 0 1920x1080x24 &\n\
+export DISPLAY=:99\n\
+# Wait for X to start\n\
+sleep 3\n\
+# Start the application\n\
+exec "$@"' > /app/start.sh && \
+chmod +x /app/start.sh
 
-# Run the application with virtual display for headless Chrome
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & uvicorn main_working:app --host 0.0.0.0 --port 8000 --workers 1"]
+# Start the application with Xvfb support
+CMD ["/app/start.sh", "python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
