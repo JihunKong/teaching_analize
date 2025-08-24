@@ -140,3 +140,9 @@ data/analysis/
 frontend_new/node_modules/
 frontend_new/.next/
 frontend_new/out/
+
+# Temporary deployment and debug files
+*-SOLUTION.md
+*-fix-rollback.sh
+deploy-*-fix.sh
+backups/

@@ -42,7 +42,7 @@ services:
   # Transcription Service
   transcription:
     build:
-      context: ./services_new/transcription
+      context: ./services/transcription
       dockerfile: Dockerfile
     container_name: aiboa_transcription
     environment:
@@ -82,7 +82,7 @@ services:
   # Analysis Service  
   analysis:
     build:
-      context: ./services_new/analysis
+      context: ./services/analysis
       dockerfile: Dockerfile
     container_name: aiboa_analysis
     environment:
@@ -131,7 +131,7 @@ services:
       - ./nginx.fixed.conf:/etc/nginx/nginx.conf:ro
       
       # Mount the frontend static files
-      - ./frontend_new/out:/usr/share/nginx/html:ro
+      - ./frontend/out:/usr/share/nginx/html:ro
       
       # SSL certificates (for future use)
       - ./ssl:/etc/nginx/ssl:ro
