@@ -2,11 +2,133 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { LanguageMetrics, WordFrequency } from '../../components/transcription'
 
 // Constants
 const POLLING_INTERVAL = 2000
 const AUTO_REDIRECT_DELAY = 5000
 const MAX_POLL_ATTEMPTS = 150 // 5분 최대 대기
+
+// TranscriptionResults component with tabs
+interface TranscriptionResultsProps {
+  transcript: string
+  characterCount: number
+  wordCount: number
+  onAnalyze: () => void
+  onCopy: () => void
+}
+
+const TranscriptionResults: React.FC<TranscriptionResultsProps> = ({
+  transcript,
+  characterCount,
+  wordCount,
+  onAnalyze,
+  onCopy
+}) => {
+  const [activeTab, setActiveTab] = useState<'transcript' | 'language' | 'words'>('transcript')
+
+  const tabStyle = (isActive: boolean) => ({
+    padding: '10px 20px',
+    border: 'none',
+    backgroundColor: isActive ? '#667eea' : '#f8f9fa',
+    color: isActive ? 'white' : '#333',
+    borderRadius: '8px 8px 0 0',
+    cursor: 'pointer',
+    fontWeight: isActive ? 'bold' : 'normal',
+    fontSize: '14px',
+    marginRight: '5px',
+    transition: 'all 0.2s ease'
+  })
+
+  return (
+    <div className="card">
+      <h4>📊 전사 결과 및 분석</h4>
+      
+      {/* Tab Navigation */}
+      <div style={{ 
+        marginBottom: '20px', 
+        borderBottom: '2px solid #e9ecef',
+        display: 'flex'
+      }}>
+        <button
+          onClick={() => setActiveTab('transcript')}
+          style={tabStyle(activeTab === 'transcript')}
+        >
+          📝 전사 텍스트
+        </button>
+        <button
+          onClick={() => setActiveTab('language')}
+          style={tabStyle(activeTab === 'language')}
+        >
+          📊 언어 분석
+        </button>
+        <button
+          onClick={() => setActiveTab('words')}
+          style={tabStyle(activeTab === 'words')}
+        >
+          🔤 단어 분석
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'transcript' && (
+        <div>
+          <textarea
+            className="form-textarea"
+            value={transcript}
+            readOnly
+            style={{ 
+              minHeight: '350px',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontSize: '1rem',
+              lineHeight: '1.6',
+              width: '100%',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '15px'
+            }}
+            aria-label="전사된 텍스트"
+          />
+          
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <button
+              className="btn"
+              onClick={onAnalyze}
+              style={{ marginRight: '10px' }}
+            >
+              🧠 분석하기
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={onCopy}
+            >
+              📋 복사하기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'language' && (
+        <div>
+          <LanguageMetrics
+            transcript={transcript}
+            characterCount={characterCount}
+            wordCount={wordCount}
+          />
+        </div>
+      )}
+
+      {activeTab === 'words' && (
+        <div>
+          <WordFrequency
+            transcript={transcript}
+            maxWords={25}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface TranscriptionJob {
   job_id: string
@@ -237,10 +359,8 @@ export default function TranscriptionPage() {
               character_count: data.result.character_count,
               word_count: data.result.word_count,
               method_used: data.result.method_used,
-              auto_analyze: true
+              auto_analyze: false
             })
-            
-            startAutoRedirect()
           }
           return
         }
@@ -451,37 +571,13 @@ export default function TranscriptionPage() {
                 </div>
               </div>
               
-              <div className="card">
-                <h4>📝 전사 결과</h4>
-                <textarea
-                  className="form-textarea"
-                  value={job.result.transcript}
-                  readOnly
-                  style={{ 
-                    minHeight: '300px',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontSize: '1rem',
-                    lineHeight: '1.6'
-                  }}
-                  aria-label="전사된 텍스트"
-                />
-                
-                <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                  <button
-                    className="btn"
-                    onClick={goToAnalysis}
-                    style={{ marginRight: '10px' }}
-                  >
-                    🧠 분석하기
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => copyToClipboard(job.result!.transcript)}
-                  >
-                    📋 복사하기
-                  </button>
-                </div>
-              </div>
+              <TranscriptionResults 
+                transcript={job.result.transcript}
+                characterCount={job.result.character_count}
+                wordCount={job.result.word_count}
+                onAnalyze={goToAnalysis}
+                onCopy={() => copyToClipboard(job.result!.transcript)}
+              />
             </div>
           )}
           

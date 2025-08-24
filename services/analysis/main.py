@@ -76,30 +76,55 @@ ANALYSIS_FRAMEWORKS = {
     "cbil": {
         "name": "개념기반 탐구 수업(CBIL) 분석",
         "description": "7단계 CBIL 분석 및 평가",
-        "prompt": """[최종 프롬프트: CBIL 7단계 분석 – 전 단계 설명형, 판단 및 대안 포함]
-🎯 분석 목적
-이 프롬프트는 실제 수업 장면 또는 전사 자료를 바탕으로 **개념기반 탐구학습(CBIL)**의 7단계 실행 여부를 평가하고,
-각 단계가 지식 중심인지 개념 중심인지 구분하여 진단하며,
-점수(0~3점)를 부여하고, 1점 이하일 경우에는 대안을 제시하는 것을 목적으로 한다.
-Reflect(성찰) 단계는 별도로 독립 평가하되, 다른 6단계 전반에 걸쳐 학생의 사고 변화와 개념 재구성 여부를 종합 판단한다.
+        "prompt": """**CBIL 7단계 분석 - 점수 출력 필수**
 
-📘 분석 형식 (각 단계 공통)
-아래 7단계(Engage~Reflect) 각각에 대해 하나의 문단으로 작성하되, 다음 내용을 문장 속에 자연스럽게 통합하여 서술하시오.
--수업 장면 서술
--실제 수업의 교사 언어, 학생 반응, 활동 구조 등 핵심 장면을 요약
--중심 사고 성격 분석
--이 장면은 지식 중심(정보, 감상, 정의 제시)인가?
--개념 중심(속성 분석, 관계 탐색, 일반화 유도)인가?
--판단 근거 제시
--질문 유형, 사고 수준, 활동 구조 등 이론적 기준에 따른 분석
--점수 부여 (0~3점)
--루브릭 기준에 따라 실행 수준 판단
-※ 각 단계마다 개념 중심 실행이 명확하지 않으면 2점 이상 금지
+📋 **중요 지시사항**
+- 각 단계마다 반드시 "점수: X점" 형식으로 점수를 명시할 것
+- 0점(없음), 1점(부족), 2점(보통), 3점(우수) 중 하나로 채점
+- 7단계 모두 분석하고 점수 부여 필수
 
-🛠 대안 제시 (1점 이하일 경우 필수)
-교사 언어 수정, 활동 구조 재설계, 사고 전환 전략 등을 1~2문단 제시
+🎯 **분석 목적**
+개념기반 탐구학습(CBIL) 7단계 실행 평가 및 점수 부여 (0~3점)
 
-분석할 텍스트:
+📝 **필수 출력 형식** (정확히 이 형식을 따를 것):
+
+#### 1. Engage (흥미 유도 및 연결)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 2. Focus (탐구 방향 설정)  
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 3. Investigate (자료 탐색 및 개념 형성)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 4. Organize (증거 조직화)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 5. Generalize (일반화)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 6. Transfer (전이)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 7. Reflect (성찰)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+🔍 **점수 기준**
+- 3점: 개념 중심의 탐구 활동이 명확히 구현됨
+- 2점: 부분적으로 개념 중심 요소가 나타남  
+- 1점: 지식 중심이지만 개념 중심 요소 일부 존재
+- 0점: 해당 단계가 나타나지 않음
+
+⚠️ **주의**: 반드시 위 형식을 따라 7단계 모두 분석하고 각각 점수를 부여하시오.
+
+**분석할 텍스트:**
 {text}
 """
     },
@@ -553,6 +578,47 @@ async def get_pdf_report(job_id: str):
     except Exception as e:
         logger.error(f"Error generating PDF report: {str(e)}")
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+# Report Generation Request Models
+class ReportGenerationRequest(BaseModel):
+    analysis_result: Dict[str, Any]
+    template: str = "comprehensive"
+    title: Optional[str] = None
+
+@app.post("/api/reports/generate/html", response_class=HTMLResponse)
+async def generate_html_report(request: ReportGenerationRequest):
+    """Generate HTML report from analysis data"""
+    try:
+        # Extract analysis data
+        analysis_result = request.analysis_result
+        
+        # Prepare data for HTML generator
+        report_data = {
+            'framework': analysis_result.get('framework', 'generic'),
+            'analysis': analysis_result.get('analysis', ''),
+            'analysis_id': analysis_result.get('analysis_id', 'direct-generation'),
+            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'character_count': analysis_result.get('character_count', 0),
+            'word_count': analysis_result.get('word_count', 0),
+            'metadata': analysis_result.get('metadata', {})
+        }
+        
+        # Generate HTML report
+        html_content = report_generator.generate_html_report(report_data)
+        
+        logger.info(f"Generated HTML report for framework: {report_data['framework']}")
+        
+        return HTMLResponse(
+            content=html_content,
+            headers={
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "no-cache"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating HTML report: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
 
 @app.get("/api/reports/status")
 async def get_report_capabilities():
