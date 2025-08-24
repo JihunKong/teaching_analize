@@ -3,6 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { LanguageMetrics, WordFrequency } from '../../components/transcription'
+import YouTubeVerification from '../../components/YouTubeVerification'
+import { isValidYouTubeUrl } from '../../utils/youtube'
 
 // Constants
 const POLLING_INTERVAL = 2000
@@ -157,6 +159,8 @@ export default function TranscriptionPage() {
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [autoRedirectCountdown, setAutoRedirectCountdown] = useState<number | null>(null)
   const [userCancelledAutoRedirect, setUserCancelledAutoRedirect] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)
+  const [verifiedVideoId, setVerifiedVideoId] = useState('')
   
   const pollAttemptsRef = useRef(0)
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -216,12 +220,6 @@ export default function TranscriptionPage() {
     }
   }, [showToast])
 
-  // URL 유효성 검사
-  const isValidYouTubeUrl = useCallback((url: string) => {
-    const youtubeRegex = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+/
-    return youtubeRegex.test(url)
-  }, [])
-
   // 자동 리다이렉트 관리
   const startAutoRedirect = useCallback(() => {
     if (userCancelledAutoRedirect) return
@@ -259,6 +257,22 @@ export default function TranscriptionPage() {
     showToast('info', '자동 이동이 취소되었습니다.')
   }, [showToast])
 
+  // Handle YouTube verification confirmation
+  const handleVerificationConfirm = useCallback((videoId: string, url: string) => {
+    setVerifiedVideoId(videoId)
+    setYoutubeUrl(url)
+    setIsVerified(true)
+    showToast('success', '영상이 확인되었습니다. 전사를 시작할 수 있습니다.')
+  }, [showToast])
+
+  // Reset verification state
+  const resetVerification = useCallback(() => {
+    setIsVerified(false)
+    setVerifiedVideoId('')
+    setYoutubeUrl('')
+    setJob(null)
+  }, [])
+
   // 수동 분석 페이지 이동
   const goToAnalysis = useCallback(() => {
     if (job?.result) {
@@ -279,8 +293,8 @@ export default function TranscriptionPage() {
 
   // 전사 요청 제출
   const submitTranscription = async () => {
-    if (!youtubeUrl.trim()) {
-      showToast('error', 'YouTube URL을 입력해주세요.')
+    if (!isVerified || !youtubeUrl.trim()) {
+      showToast('error', '먼저 YouTube 영상을 확인해주세요.')
       return
     }
 
@@ -450,60 +464,70 @@ export default function TranscriptionPage() {
       <div className="page-title">YouTube 전사</div>
       <div className="page-subtitle">YouTube 영상을 텍스트로 변환합니다</div>
       
-      <div className="grid">
-        <div className="form-group">
-          <label className="form-label" htmlFor="youtube-url">
-            YouTube URL
-          </label>
-          <input
-            id="youtube-url"
-            type="url"
-            className="form-input"
-            placeholder="https://www.youtube.com/watch?v=..."
-            value={youtubeUrl}
-            onChange={(e) => setYoutubeUrl(e.target.value)}
-            disabled={loading}
-            aria-describedby="url-help"
-          />
-          <small id="url-help" style={{ color: '#666', marginTop: '5px', display: 'block' }}>
-            예: https://www.youtube.com/watch?v=-OLCt6WScEY&list=PLugIxwJYmOhl_8KO3GHx9gp6VKMmbsTfw
-          </small>
-        </div>
-        
-        <div className="form-group">
-          <label className="form-label" htmlFor="language-select">
-            언어
-          </label>
-          <select
-            id="language-select"
-            className="form-select"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            disabled={loading}
-          >
-            <option value="ko">한국어</option>
-            <option value="en">영어</option>
-            <option value="ja">일본어</option>
-            <option value="zh">중국어</option>
-          </select>
-        </div>
-        
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <button
-            className="btn btn-large"
-            onClick={submitTranscription}
-            disabled={loading || !youtubeUrl.trim()}
-            aria-describedby={loading ? 'loading-status' : undefined}
-          >
-            {loading ? '처리 중...' : '전사 시작'}
-          </button>
-          {loading && (
-            <div id="loading-status" className="sr-only" aria-live="polite">
-              전사 요청을 처리 중입니다.
+      {/* YouTube Verification Section */}
+      {!isVerified && !job && (
+        <YouTubeVerification 
+          onConfirm={handleVerificationConfirm}
+          className="verification-container"
+        />
+      )}
+      
+      {/* Verified Video and Transcription Controls */}
+      {isVerified && !job && (
+        <div className="verified-section">
+          <div className="status status-success" style={{ marginBottom: '20px' }}>
+            <strong>✅ 영상 확인 완료!</strong>
+            <p style={{ marginTop: '5px', fontWeight: 'normal' }}>
+              Video ID: <strong>{verifiedVideoId}</strong>
+            </p>
+          </div>
+          
+          <div className="grid">
+            <div className="form-group">
+              <label className="form-label" htmlFor="language-select">
+                전사 언어 선택
+              </label>
+              <select
+                id="language-select"
+                className="form-select"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                disabled={loading}
+              >
+                <option value="ko">한국어</option>
+                <option value="en">영어</option>
+                <option value="ja">일본어</option>
+                <option value="zh">중국어</option>
+              </select>
             </div>
-          )}
+            
+            <div style={{ textAlign: 'center', marginTop: '20px', display: 'flex', gap: '15px', justifyContent: 'center' }}>
+              <button
+                className="btn btn-large"
+                onClick={submitTranscription}
+                disabled={loading}
+                aria-describedby={loading ? 'loading-status' : undefined}
+                style={{ minWidth: '150px' }}
+              >
+                {loading ? '처리 중...' : '🎯 전사 시작'}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={resetVerification}
+                disabled={loading}
+                style={{ minWidth: '120px' }}
+              >
+                다시 선택
+              </button>
+              {loading && (
+                <div id="loading-status" className="sr-only" aria-live="polite">
+                  전사 요청을 처리 중입니다.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
       
       {job && (
         <div className="container" style={{ marginTop: '30px' }}>
@@ -595,20 +619,42 @@ export default function TranscriptionPage() {
         <h3>📋 사용 안내</h3>
         <div className="grid grid-2">
           <div>
-            <h4>✅ 지원되는 영상</h4>
+            <h4>🎯 전사 과정</h4>
+            <ol style={{ marginLeft: '20px', color: '#666' }}>
+              <li><strong>URL 입력:</strong> YouTube URL을 입력</li>
+              <li><strong>영상 확인:</strong> 미리보기로 영상 검증</li>
+              <li><strong>확인 완료:</strong> 올바른 영상인지 확인</li>
+              <li><strong>전사 시작:</strong> 언어 선택 후 전사 진행</li>
+            </ol>
+          </div>
+          
+          <div>
+            <h4>✅ 지원 사항</h4>
             <ul style={{ marginLeft: '20px', color: '#666' }}>
               <li>자막이 있는 YouTube 영상</li>
               <li>공개 또는 제한공개 영상</li>
               <li>한국어, 영어, 일본어, 중국어</li>
+              <li>모든 표준 YouTube URL 형식</li>
             </ul>
           </div>
-          
+        </div>
+        
+        <div className="grid grid-2" style={{ marginTop: '20px' }}>
           <div>
             <h4>⚠️ 주의사항</h4>
             <ul style={{ marginLeft: '20px', color: '#666' }}>
               <li>개인정보가 포함된 영상 주의</li>
               <li>긴 영상은 처리 시간이 오래 걸림</li>
               <li>자막이 없으면 전사 불가</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4>💡 팁</h4>
+            <ul style={{ marginLeft: '20px', color: '#666' }}>
+              <li>URL 입력 후 Enter키로 빠른 미리보기</li>
+              <li>미리보기에서 영상 내용 미리 확인</li>
+              <li>잘못된 영상이면 "다시 입력" 버튼 활용</li>
             </ul>
           </div>
         </div>

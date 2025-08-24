@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 import redis
 import json
 import requests
@@ -276,7 +276,9 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
         prompt = framework_config["prompt"].format(text=text)
         
         # Call Solar API with temperature=0.3 for consistent analysis results
+        start_time = datetime.now()
         analysis_result = call_solar_api(prompt, temperature=0.3)
+        processing_time = (datetime.now() - start_time).total_seconds()
         
         # Prepare result
         result = {
@@ -585,6 +587,31 @@ class ReportGenerationRequest(BaseModel):
     template: str = "comprehensive"
     title: Optional[str] = None
 
+class ComprehensiveReportRequest(BaseModel):
+    job_ids: List[str]
+    report_type: str = "comparison"  # comparison, detailed, executive
+    framework_weights: Optional[Dict[str, float]] = {}
+    include_recommendations: bool = True
+    title: Optional[str] = "종합 교육 분석 보고서"
+    
+    @validator('job_ids')
+    def validate_job_ids(cls, v):
+        if not v or len(v) < 1:
+            raise ValueError('At least one job_id is required')
+        if len(v) > 10:
+            raise ValueError('Maximum 10 analyses can be combined')
+        return v
+    
+    @validator('framework_weights')
+    def validate_weights(cls, v):
+        if v is None:
+            return {}
+        # Ensure all weights are positive
+        for framework, weight in v.items():
+            if weight <= 0:
+                raise ValueError(f'Framework weight for {framework} must be positive')
+        return v
+
 @app.post("/api/reports/generate/html", response_class=HTMLResponse)
 async def generate_html_report(request: ReportGenerationRequest):
     """Generate HTML report from analysis data"""
@@ -665,6 +692,209 @@ async def get_stats():
     except Exception as e:
         logger.error(f"Error getting stats: {str(e)}")
         return {"error": "Could not retrieve stats"}
+
+@app.post("/api/reports/generate/comprehensive", response_class=HTMLResponse)
+async def generate_comprehensive_report(request: ComprehensiveReportRequest):
+    """Generate comprehensive HTML report combining multiple analysis results"""
+    try:
+        # Validate and retrieve analysis results
+        analysis_results = []
+        missing_jobs = []
+        failed_jobs = []
+        
+        for job_id in request.job_ids:
+            try:
+                job_data = redis_client.get(f"analysis_job:{job_id}")
+                if not job_data:
+                    missing_jobs.append(job_id)
+                    continue
+                
+                job = json.loads(job_data)
+                
+                if job.get("status") != "completed":
+                    failed_jobs.append({
+                        "job_id": job_id,
+                        "status": job.get("status", "unknown"),
+                        "message": job.get("message", "No status message")
+                    })
+                    continue
+                
+                if "result" not in job:
+                    failed_jobs.append({
+                        "job_id": job_id,
+                        "status": "completed_no_result",
+                        "message": "Analysis completed but no result found"
+                    })
+                    continue
+                
+                analysis_results.append(job["result"])
+                
+            except json.JSONDecodeError:
+                failed_jobs.append({
+                    "job_id": job_id,
+                    "status": "data_error",
+                    "message": "Invalid job data format"
+                })
+            except Exception as e:
+                logger.error(f"Error retrieving job {job_id}: {str(e)}")
+                failed_jobs.append({
+                    "job_id": job_id,
+                    "status": "retrieval_error", 
+                    "message": str(e)
+                })
+        
+        # Check if we have any valid results
+        if not analysis_results:
+            error_details = {
+                "message": "No valid analysis results found for comprehensive report",
+                "missing_jobs": missing_jobs,
+                "failed_jobs": failed_jobs,
+                "total_requested": len(request.job_ids)
+            }
+            raise HTTPException(
+                status_code=400, 
+                detail=error_details
+            )
+        
+        # Log warnings for partial failures
+        if missing_jobs or failed_jobs:
+            logger.warning(f"Comprehensive report generated with partial data. Missing: {len(missing_jobs)}, Failed: {len(failed_jobs)}")
+        
+        # Prepare report configuration
+        report_config = {
+            "report_type": request.report_type,
+            "framework_weights": request.framework_weights or {},
+            "include_recommendations": request.include_recommendations,
+            "title": request.title or "종합 교육 분석 보고서"
+        }
+        
+        # Generate comprehensive report
+        html_report = report_generator.generate_comprehensive_report(
+            analysis_results, 
+            report_config
+        )
+        
+        logger.info(f"Generated comprehensive report combining {len(analysis_results)} analyses")
+        
+        return HTMLResponse(
+            content=html_report,
+            headers={
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "no-cache",
+                "X-Analysis-Count": str(len(analysis_results)),
+                "X-Missing-Jobs": str(len(missing_jobs)) if missing_jobs else "0",
+                "X-Failed-Jobs": str(len(failed_jobs)) if failed_jobs else "0"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating comprehensive report: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Comprehensive report generation failed: {str(e)}"
+        )
+
+@app.get("/api/reports/comprehensive/status/{job_ids}")
+async def get_comprehensive_report_status(job_ids: str):
+    """Get status of multiple analysis jobs for comprehensive reporting"""
+    try:
+        # Parse comma-separated job IDs
+        job_id_list = [id.strip() for id in job_ids.split(',') if id.strip()]
+        
+        if len(job_id_list) > 10:
+            raise HTTPException(
+                status_code=400, 
+                detail="Maximum 10 job IDs can be checked at once"
+            )
+        
+        job_statuses = []
+        summary = {
+            "total_jobs": len(job_id_list),
+            "completed": 0,
+            "processing": 0,
+            "pending": 0,
+            "failed": 0,
+            "missing": 0,
+            "ready_for_comprehensive": False
+        }
+        
+        for job_id in job_id_list:
+            try:
+                job_data = redis_client.get(f"analysis_job:{job_id}")
+                if not job_data:
+                    job_statuses.append({
+                        "job_id": job_id,
+                        "status": "missing",
+                        "message": "Job not found"
+                    })
+                    summary["missing"] += 1
+                    continue
+                
+                job = json.loads(job_data)
+                status = job.get("status", "unknown")
+                
+                job_status = {
+                    "job_id": job_id,
+                    "status": status,
+                    "framework": job.get("framework"),
+                    "message": job.get("message", ""),
+                    "has_result": "result" in job,
+                    "created_at": job.get("created_at"),
+                    "updated_at": job.get("updated_at")
+                }
+                
+                if status == "completed" and "result" in job:
+                    framework_name = report_generator.FRAMEWORK_NAMES.get(
+                        job.get("framework"), 
+                        job.get("framework", "Unknown")
+                    )
+                    job_status["framework_name"] = framework_name
+                    summary["completed"] += 1
+                elif status == "processing":
+                    summary["processing"] += 1
+                elif status == "pending":
+                    summary["pending"] += 1
+                elif status == "failed":
+                    summary["failed"] += 1
+                
+                job_statuses.append(job_status)
+                
+            except json.JSONDecodeError:
+                job_statuses.append({
+                    "job_id": job_id,
+                    "status": "data_error",
+                    "message": "Invalid job data format"
+                })
+                summary["failed"] += 1
+            except Exception as e:
+                logger.error(f"Error checking status of job {job_id}: {str(e)}")
+                job_statuses.append({
+                    "job_id": job_id,
+                    "status": "error",
+                    "message": str(e)
+                })
+                summary["failed"] += 1
+        
+        # Check if ready for comprehensive report
+        summary["ready_for_comprehensive"] = (
+            summary["completed"] > 0 and 
+            summary["processing"] == 0 and 
+            summary["pending"] == 0
+        )
+        
+        return {
+            "job_statuses": job_statuses,
+            "summary": summary,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking comprehensive report status: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error checking job statuses")
 
 @app.get("/api/research/stats")
 async def get_research_stats():

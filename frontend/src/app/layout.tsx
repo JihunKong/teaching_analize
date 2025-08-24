@@ -26,6 +26,7 @@ export default function RootLayout({
               <Link href="/transcription" className="nav-link">전사</Link>
               <Link href="/analysis" className="nav-link">분석</Link>
               <Link href="/reports" className="nav-link">보고서</Link>
+              <Link href="/comprehensive-reports" className="nav-link">종합보고서</Link>
             </div>
           </nav>
         </header>

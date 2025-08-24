@@ -580,7 +580,15 @@ export default function AnalysisPage() {
                   .filter(result => result && result.status === 'completed' && result.result)
                 
                 if (completedResults.length > 0) {
-                  alert(`${completedResults.length}개 프레임워크 분석 완료! 종합 보고서 생성 기능 개발 중입니다.`)
+                  // Store parallel results for comprehensive report page
+                  sessionStorage.setItem('parallelAnalysisResults', JSON.stringify({
+                    results: parallelResults,
+                    frameworks: frameworks,
+                    timestamp: Date.now()
+                  }))
+                  
+                  // Navigate to comprehensive reports page
+                  window.location.href = '/comprehensive-reports'
                 } else {
                   alert('완료된 분석이 없습니다.')
                 }

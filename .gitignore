@@ -39,6 +39,8 @@ frontend/out/
 frontend/build/
 frontend/dist/
 frontend/.env*
+frontend/node_modules/
+node_modules/
 
 # IDE
 .vscode/

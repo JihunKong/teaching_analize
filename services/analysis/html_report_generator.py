@@ -4,9 +4,11 @@ Creates interactive HTML reports with Chart.js visualizations
 """
 
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Union
 import json
 import re
+import statistics
+import numpy as np
 
 class HTMLReportGenerator:
     """Generate professional HTML reports for all analysis frameworks"""
@@ -27,6 +29,87 @@ class HTMLReportGenerator:
         "critical_thinking": "비판적 사고 촉진 분석",
         "collaborative_learning": "협력 학습 분석"
     }
+    
+    # Score normalization configurations for each framework
+    FRAMEWORK_SCORE_CONFIGS = {
+        "cbil": {
+            "score_range": (0, 3),
+            "score_type": "discrete",
+            "dimensions": 7
+        },
+        "student_discussion": {
+            "score_range": (0, 10),
+            "score_type": "frequency",
+            "dimensions": 3  # Categories: factual, interpretive, evaluative
+        },
+        "lesson_coaching": {
+            "score_range": (0, 100),
+            "score_type": "percentage",
+            "dimensions": 15
+        }
+    }
+    
+    def normalize_score(self, score: Union[int, float], framework: str, dimension: str = None) -> float:
+        """Normalize scores from different frameworks to 0-100 scale"""
+        if framework not in self.FRAMEWORK_SCORE_CONFIGS:
+            return min(100, max(0, float(score)))
+        
+        config = self.FRAMEWORK_SCORE_CONFIGS[framework]
+        min_score, max_score = config["score_range"]
+        
+        if config["score_type"] == "discrete":
+            # CBIL: 0-3 scale -> 0-100 scale
+            if max_score == 3:
+                return (float(score) / 3.0) * 100
+        elif config["score_type"] == "frequency":
+            # Student Discussion: 0-10+ frequency -> 0-100 scale
+            return min(100, (float(score) / 10.0) * 100)
+        elif config["score_type"] == "percentage":
+            # Already in percentage
+            return min(100, max(0, float(score)))
+        
+        # Default linear normalization
+        if max_score > min_score:
+            normalized = ((float(score) - min_score) / (max_score - min_score)) * 100
+            return min(100, max(0, normalized))
+        
+        return 50.0  # Fallback for edge cases
+    
+    def extract_framework_insights(self, analysis_text: str, framework: str) -> Dict[str, Any]:
+        """Extract key insights and patterns from framework analysis"""
+        insights = {
+            "strengths": [],
+            "improvements": [],
+            "key_metrics": {},
+            "patterns": []
+        }
+        
+        lines = analysis_text.split('\n')
+        
+        # Look for strength indicators
+        for line in lines:
+            line_lower = line.lower()
+            if any(word in line_lower for word in ['우수', '좋', '효과적', '높', '잘']):
+                if len(line.strip()) > 10:
+                    insights["strengths"].append(line.strip())
+        
+        # Look for improvement areas
+        for line in lines:
+            line_lower = line.lower()
+            if any(word in line_lower for word in ['부족', '개선', '필요', '부족', '낮', '약함']):
+                if len(line.strip()) > 10:
+                    insights["improvements"].append(line.strip())
+        
+        # Extract numerical metrics
+        numbers = re.findall(r'(\d+(?:\.\d+)?)\s*(?:점|%|회)', analysis_text)
+        if numbers:
+            insights["key_metrics"]["average_score"] = statistics.mean([float(n) for n in numbers[:10]])
+            insights["key_metrics"]["score_range"] = {
+                "min": min([float(n) for n in numbers[:10]]),
+                "max": max([float(n) for n in numbers[:10]])
+            }
+        
+        return insights
     
     def extract_chart_data(self, analysis_text: str, framework: str) -> Dict[str, Any]:
         """Extract chart data from analysis text based on framework"""
@@ -404,6 +487,668 @@ class HTMLReportGenerator:
             ]
         
         return recommendations[:5]
+    
+    def aggregate_analysis_data(self, analysis_results: List[Dict[str, Any]], framework_weights: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+        """Aggregate multiple analysis results into unified insights"""
+        if not analysis_results:
+            return {}
+        
+        # Default equal weights
+        if framework_weights is None:
+            framework_weights = {result.get('framework', 'unknown'): 1.0 for result in analysis_results}
+        
+        aggregated = {
+            "overall_score": 0.0,
+            "framework_scores": {},
+            "combined_insights": {
+                "strengths": [],
+                "improvements": [],
+                "patterns": []
+            },
+            "recommendations": [],
+            "comparison_data": {},
+            "metadata": {
+                "total_frameworks": len(analysis_results),
+                "frameworks_included": [],
+                "total_words_analyzed": 0,
+                "analysis_dates": []
+            }
+        }
+        
+        framework_normalized_scores = {}
+        
+        # Process each framework result
+        for result in analysis_results:
+            framework = result.get('framework', 'unknown')
+            analysis_text = result.get('analysis', '')
+            
+            # Update metadata
+            aggregated["metadata"]["frameworks_included"].append(self.FRAMEWORK_NAMES.get(framework, framework))
+            aggregated["metadata"]["total_words_analyzed"] += result.get('word_count', 0)
+            aggregated["metadata"]["analysis_dates"].append(result.get('created_at', ''))
+            
+            # Extract chart data for scoring
+            chart_data = self.extract_chart_data(analysis_text, framework)
+            
+            # Normalize scores
+            if chart_data.get('data'):
+                raw_scores = chart_data['data']
+                if isinstance(raw_scores, list) and raw_scores:
+                    avg_raw_score = statistics.mean([score for score in raw_scores if isinstance(score, (int, float))])
+                    normalized_score = self.normalize_score(avg_raw_score, framework)
+                    framework_normalized_scores[framework] = normalized_score
+                    aggregated["framework_scores"][framework] = {
+                        "raw_score": avg_raw_score,
+                        "normalized_score": normalized_score,
+                        "framework_name": self.FRAMEWORK_NAMES.get(framework, framework)
+                    }
+            
+            # Extract insights
+            insights = self.extract_framework_insights(analysis_text, framework)
+            aggregated["combined_insights"]["strengths"].extend(insights["strengths"][:3])
+            aggregated["combined_insights"]["improvements"].extend(insights["improvements"][:3])
+            
+            # Extract recommendations
+            recs = self.generate_recommendations(analysis_text, framework)
+            aggregated["recommendations"].extend(recs[:2])
+        
+        # Calculate overall weighted score
+        if framework_normalized_scores:
+            total_weight = sum(framework_weights.get(fw, 1.0) for fw in framework_normalized_scores.keys())
+            weighted_sum = sum(
+                score * framework_weights.get(fw, 1.0) 
+                for fw, score in framework_normalized_scores.items()
+            )
+            aggregated["overall_score"] = weighted_sum / total_weight if total_weight > 0 else 0
+        
+        # Prepare comparison data for charts
+        aggregated["comparison_data"] = {
+            "framework_names": [self.FRAMEWORK_NAMES.get(fw, fw) for fw in framework_normalized_scores.keys()],
+            "normalized_scores": list(framework_normalized_scores.values()),
+            "framework_ids": list(framework_normalized_scores.keys())
+        }
+        
+        # Deduplicate and limit recommendations
+        unique_recommendations = list(dict.fromkeys(aggregated["recommendations"]))
+        aggregated["recommendations"] = unique_recommendations[:8]
+        
+        return aggregated
+    
+    def generate_comprehensive_chart_config(self, aggregated_data: Dict[str, Any]) -> str:
+        """Generate Chart.js configuration for comprehensive comparison"""
+        comparison_data = aggregated_data.get("comparison_data", {})
+        
+        if not comparison_data.get("framework_names"):
+            return json.dumps({})
+        
+        # Multi-chart configuration
+        config = {
+            "type": "bar",
+            "data": {
+                "labels": comparison_data["framework_names"],
+                "datasets": [{
+                    "label": "통합 점수 (0-100)",
+                    "data": comparison_data["normalized_scores"],
+                    "backgroundColor": [
+                        "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", 
+                        "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF"
+                    ],
+                    "borderColor": [
+                        "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", 
+                        "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF"
+                    ],
+                    "borderWidth": 1
+                }]
+            },
+            "options": {
+                "responsive": True,
+                "plugins": {
+                    "title": {
+                        "display": True,
+                        "text": "다중 프레임워크 비교 분석"
+                    },
+                    "legend": {"display": False}
+                },
+                "scales": {
+                    "y": {
+                        "beginAtZero": True,
+                        "max": 100,
+                        "ticks": {
+                            "callback": "function(value) { return value + '점'; }"
+                        }
+                    }
+                },
+                "animation": {
+                    "duration": 1500,
+                    "easing": "easeOutQuart"
+                }
+            }
+        }
+        
+        return json.dumps(config, ensure_ascii=False)
+    
+    def generate_comprehensive_report(self, analysis_results: List[Dict[str, Any]], 
+                                    report_config: Dict[str, Any] = None) -> str:
+        """Generate comprehensive HTML report combining multiple frameworks"""
+        if not analysis_results:
+            return "<html><body><h1>No analysis results provided</h1></body></html>"
+        
+        # Default configuration
+        if report_config is None:
+            report_config = {
+                "report_type": "comparison",
+                "framework_weights": {},
+                "include_recommendations": True,
+                "title": "종합 교육 분석 보고서"
+            }
+        
+        # Aggregate data
+        aggregated = self.aggregate_analysis_data(
+            analysis_results, 
+            report_config.get("framework_weights")
+        )
+        
+        # Generate chart configuration
+        chart_config = self.generate_comprehensive_chart_config(aggregated)
+        
+        # Prepare report metadata
+        timestamp = datetime.now().strftime('%Y년 %m월 %d일 %H:%M')
+        analysis_ids = [result.get('analysis_id', 'N/A') for result in analysis_results]
+        
+        # Generate HTML
+        html_content = f'''
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{report_config.get("title", "종합 교육 분석 보고서")} - AIBOA</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @page {{
+            size: A4;
+            margin: 1.5cm;
+        }}
+        
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
+            line-height: 1.7;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }}
+        
+        .report-container {{
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .header::before {{
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }}
+        
+        @keyframes float {{
+            0%, 100% {{ transform: translateY(0px); }}
+            50% {{ transform: translateY(-20px); }}
+        }}
+        
+        .title {{
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .subtitle {{
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .meta-info {{
+            font-size: 14px;
+            background: rgba(255,255,255,0.15);
+            padding: 12px 25px;
+            border-radius: 30px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .section {{
+            padding: 35px;
+            margin-bottom: 0;
+            border-bottom: 1px solid #f0f0f0;
+        }}
+        
+        .section:last-child {{
+            border-bottom: none;
+        }}
+        
+        h2 {{
+            color: #2C3E50;
+            font-size: 24px;
+            margin-bottom: 25px;
+            padding-left: 20px;
+            border-left: 5px solid #667eea;
+            display: flex;
+            align-items: center;
+        }}
+        
+        .overall-score {{
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .score-number {{
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        
+        .score-label {{
+            font-size: 16px;
+            opacity: 0.9;
+        }}
+        
+        .frameworks-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }}
+        
+        .framework-card {{
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .framework-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }}
+        
+        .framework-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }}
+        
+        .framework-name {{
+            font-size: 16px;
+            font-weight: bold;
+            color: #2C3E50;
+            margin-bottom: 15px;
+        }}
+        
+        .framework-score {{
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }}
+        
+        .framework-score-label {{
+            font-size: 12px;
+            color: #6c757d;
+        }}
+        
+        .chart-container {{
+            position: relative;
+            height: 400px;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+        }}
+        
+        .insights-section {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }}
+        
+        .insights-column {{
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid #28a745;
+        }}
+        
+        .insights-column.improvements {{
+            border-left-color: #ffc107;
+        }}
+        
+        .insights-column h3 {{
+            color: #2C3E50;
+            font-size: 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }}
+        
+        .insights-list {{
+            list-style: none;
+        }}
+        
+        .insights-list li {{
+            padding: 12px 0;
+            border-bottom: 1px solid #dee2e6;
+            position: relative;
+            padding-left: 25px;
+        }}
+        
+        .insights-list li:before {{
+            content: "•";
+            color: #667eea;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }}
+        
+        .insights-list li:last-child {{
+            border-bottom: none;
+        }}
+        
+        .recommendations {{
+            display: grid;
+            gap: 20px;
+            margin: 25px 0;
+        }}
+        
+        .recommendation-card {{
+            background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid #2196F3;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }}
+        
+        .recommendation-card:hover {{
+            transform: translateX(5px);
+        }}
+        
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }}
+        
+        .stat-card {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .stat-number {{
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }}
+        
+        .stat-label {{
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+        
+        .footer {{
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 14px;
+        }}
+        
+        @media print {{
+            body {{ 
+                background: white;
+                padding: 0;
+                font-size: 12pt;
+            }}
+            .report-container {{
+                box-shadow: none;
+                border-radius: 0;
+            }}
+            .section {{ 
+                page-break-inside: avoid; 
+                padding: 20px;
+            }}
+            .chart-container {{ 
+                page-break-inside: avoid; 
+                height: 300px;
+            }}
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{ padding: 10px; }}
+            .header {{ padding: 25px; }}
+            .title {{ font-size: 26px; }}
+            .insights-section {{ grid-template-columns: 1fr; }}
+            .frameworks-grid {{ grid-template-columns: 1fr; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="header">
+            <div class="title">📊 {report_config.get("title", "종합 교육 분석 보고서")}</div>
+            <div class="subtitle">다중 프레임워크 비교 분석</div>
+            <div class="meta-info">
+                분석일: {timestamp} | 포함된 분석: {len(analysis_results)}개
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="overall-score">
+                <div class="score-number">{aggregated["overall_score"]:.1f}점</div>
+                <div class="score-label">통합 교육 효과성 점수</div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{aggregated["metadata"]["total_frameworks"]}</div>
+                    <div class="stat-label">분석 프레임워크</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{aggregated["metadata"]["total_words_analyzed"]:,}</div>
+                    <div class="stat-label">분석된 총 단어 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{len(aggregated["recommendations"])}</div>
+                    <div class="stat-label">통합 권장사항</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 프레임워크별 비교 분석</h2>
+            
+            <div class="frameworks-grid">
+                {self._generate_framework_cards(aggregated["framework_scores"])}
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>💡 통합 인사이트</h2>
+            <div class="insights-section">
+                <div class="insights-column">
+                    <h3>🌟 주요 강점</h3>
+                    <ul class="insights-list">
+                        {self._generate_insights_list(aggregated["combined_insights"]["strengths"])}
+                    </ul>
+                </div>
+                <div class="insights-column improvements">
+                    <h3>🎯 개선 영역</h3>
+                    <ul class="insights-list">
+                        {self._generate_insights_list(aggregated["combined_insights"]["improvements"])}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+'''
+        
+        # Add recommendations section if requested
+        recommendations_section = ""
+        if report_config.get("include_recommendations", True):
+            recommendations_section = f'''
+        <div class="section">
+            <h2>🚀 통합 개선 권장사항</h2>
+            <div class="recommendations">
+                {self._generate_recommendation_cards(aggregated["recommendations"])}
+            </div>
+        </div>
+        '''
+        
+        html_content += recommendations_section + f'''
+        <div class="footer">
+            <p><strong>본 종합 보고서는 AIBOA 시스템의 다중 프레임워크 분석을 통해 생성되었습니다.</strong></p>
+            <p>분석 ID: {", ".join(analysis_ids[:3])}{"..." if len(analysis_ids) > 3 else ""}</p>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js configuration
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        const chartConfig = {chart_config};
+        
+        new Chart(ctx, chartConfig);
+        
+        // Add interactivity
+        document.addEventListener('DOMContentLoaded', function() {{
+            // Animate framework cards
+            const cards = document.querySelectorAll('.framework-card');
+            cards.forEach((card, index) => {{
+                card.style.animationDelay = `${{index * 0.1}}s`;
+                card.style.animation = 'fadeInUp 0.6s ease forwards';
+            }});
+        }});
+        
+        // Animation keyframes
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInUp {{
+                from {{
+                    opacity: 0;
+                    transform: translateY(30px);
+                }}
+                to {{
+                    opacity: 1;
+                    transform: translateY(0);
+                }}
+            }}
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
+        '''
+        
+        return html_content
+    
+    def _generate_framework_cards(self, framework_scores: Dict[str, Any]) -> str:
+        """Generate HTML for framework comparison cards"""
+        cards = []
+        for framework, score_data in framework_scores.items():
+            card_html = f'''
+                <div class="framework-card">
+                    <div class="framework-name">{score_data["framework_name"]}</div>
+                    <div class="framework-score">{score_data["normalized_score"]:.1f}</div>
+                    <div class="framework-score-label">정규화 점수 (/100)</div>
+                </div>
+            '''
+            cards.append(card_html)
+        return ''.join(cards)
+    
+    def _generate_insights_list(self, insights: List[str]) -> str:
+        """Generate HTML for insights list"""
+        if not insights:
+            return '<li>분석할 수 있는 인사이트가 충분하지 않습니다.</li>'
+        
+        items = []
+        for insight in insights[:5]:  # Limit to 5 items
+            clean_insight = insight.replace('*', '').replace('#', '').strip()
+            if clean_insight:
+                items.append(f'<li>{clean_insight}</li>')
+        
+        return ''.join(items) if items else '<li>추가 분석이 필요합니다.</li>'
+    
+    def _generate_recommendation_cards(self, recommendations: List[str]) -> str:
+        """Generate HTML for recommendation cards"""
+        if not recommendations:
+            return '<div class="recommendation-card">구체적인 권장사항을 생성하기 위해 더 많은 분석 데이터가 필요합니다.</div>'
+        
+        cards = []
+        for i, rec in enumerate(recommendations, 1):
+            clean_rec = rec.replace('*', '').replace('#', '').strip()
+            if clean_rec:
+                card_html = f'''
+                    <div class="recommendation-card">
+                        <strong>{i}.</strong> {clean_rec}
+                    </div>
+                '''
+                cards.append(card_html)
+        
+        return ''.join(cards) if cards else '<div class="recommendation-card">권장사항을 생성할 수 없습니다.</div>'
     
     def generate_html_report(self, analysis_data: Dict[str, Any]) -> str:
         """Generate complete HTML report with Chart.js"""
