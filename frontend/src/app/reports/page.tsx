@@ -122,7 +122,7 @@ export default function ReportsPage() {
   return (
     <div className="container">
       <div className="page-title">분석 보고서</div>
-      <div className="page-subtitle">아름다운 HTML 보고서로 분석 결과를 확인하세요</div>
+      <div className="page-subtitle">HTML 보고서로 분석 결과를 확인하세요</div>
       
       <div className="container">
         <h3>📊 보고서 템플릿</h3>
@@ -195,7 +195,7 @@ export default function ReportsPage() {
           </div>
           
           <div className="card">
-            <h4>🎨 아름다운 디자인</h4>
+            <h4>🎨 전문적 디자인</h4>
             <p>교육 전문가를 위한 세련되고 전문적인 보고서 디자인입니다.</p>
             <ul style={{ marginLeft: '20px', color: '#666', fontSize: '0.9rem' }}>
               <li>색상 코딩</li>

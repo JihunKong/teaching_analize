@@ -433,7 +433,7 @@ async def analyze_transcript(
     framework: str = "cbil",
     background_tasks: BackgroundTasks = None
 ):
-    """Analyze transcript result from transcription service"""
+    """Analyze transcript result from transcription service (legacy endpoint)"""
     try:
         # Extract text from transcription result
         if "result" in transcription_result and "transcript" in transcription_result["result"]:
@@ -463,6 +463,80 @@ async def analyze_transcript(
     
     except Exception as e:
         logger.error(f"Error analyzing transcript: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+class TranscriptAnalysisRequest(BaseModel):
+    transcript_id: str
+    framework: str = "cbil"
+    metadata: Optional[Dict[str, Any]] = {}
+
+async def fetch_transcript_from_service(transcript_id: str) -> Dict[str, Any]:
+    """Fetch transcript data directly from transcription service"""
+    try:
+        transcription_service_url = os.getenv("TRANSCRIPTION_SERVICE_URL", "http://localhost:8000")
+        response = requests.get(f"{transcription_service_url}/api/transcripts/{transcript_id}")
+        
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Transcript not found")
+        else:
+            raise HTTPException(status_code=500, detail="Failed to fetch transcript from service")
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to connect to transcription service: {str(e)}")
+        raise HTTPException(status_code=503, detail="Transcription service unavailable")
+
+@app.post("/api/analyze/transcript-by-id")
+async def analyze_transcript_by_id(
+    request: TranscriptAnalysisRequest,
+    background_tasks: BackgroundTasks = None
+):
+    """Analyze transcript by fetching data directly from transcription service"""
+    try:
+        # Fetch transcript from transcription service
+        logger.info(f"Fetching transcript {request.transcript_id} from transcription service")
+        transcript_data = await fetch_transcript_from_service(request.transcript_id)
+        
+        if not transcript_data.get("success"):
+            raise HTTPException(status_code=400, detail="Failed to fetch transcript data")
+        
+        # Extract text and prepare metadata
+        text = transcript_data.get("transcript_text", "")
+        if not text:
+            raise HTTPException(status_code=400, detail="No text found in transcript")
+        
+        # Combine provided metadata with transcript metadata
+        metadata = {
+            "transcript_id": request.transcript_id,
+            "source_url": transcript_data.get("source_url"),
+            "video_id": transcript_data.get("video_id"),
+            "language": transcript_data.get("language"),
+            "transcription_method": transcript_data.get("method_used"),
+            "character_count": transcript_data.get("character_count"),
+            "word_count": transcript_data.get("word_count"),
+            "teacher_name": transcript_data.get("teacher_name"),
+            "subject": transcript_data.get("subject"),
+            "grade_level": transcript_data.get("grade_level"),
+            **(request.metadata or {})
+        }
+        
+        # Create analysis request
+        analysis_request = AnalysisRequest(
+            text=text,
+            framework=request.framework,
+            metadata=metadata
+        )
+        
+        logger.info(f"Starting analysis for transcript {request.transcript_id} using {request.framework} framework")
+        
+        # Submit for analysis
+        return await analyze_text(analysis_request, background_tasks)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error analyzing transcript by ID {request.transcript_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 # Initialize report generators

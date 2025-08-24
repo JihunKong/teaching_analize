@@ -145,50 +145,7 @@ export default function ComprehensiveReportsPage() {
         }
       }
 
-      // Add mock data if no real data was loaded
-      if (loadedAnalyses.length === 0) {
-        loadedAnalyses = [
-          {
-            analysis_id: "cbil-001",
-            framework: "cbil",
-            framework_name: "개념기반 탐구 수업(CBIL)",
-            analysis: "CBIL 7단계 분석 결과입니다...",
-            character_count: 5026,
-            word_count: 1229,
-            created_at: "2025-08-22T10:35:00Z",
-            metadata: {
-              video_id: "-OLCt6WScEY",
-              temperature: 0.3
-            }
-          },
-          {
-            analysis_id: "discussion-001",
-            framework: "discussion",
-            framework_name: "학생주도 토론 분석",
-            analysis: "학생주도 토론 분석 결과입니다...",
-            character_count: 4521,
-            word_count: 1105,
-            created_at: "2025-08-22T11:20:00Z",
-            metadata: {
-              video_id: "-OLCt6WScEY",
-              temperature: 0.3
-            }
-          },
-          {
-            analysis_id: "coaching-001",
-            framework: "coaching",
-            framework_name: "수업 코칭 분석",
-            analysis: "수업 코칭 분석 결과입니다...",
-            character_count: 3892,
-            word_count: 952,
-            created_at: "2025-08-22T11:45:00Z",
-            metadata: {
-              video_id: "-OLCt6WScEY",
-              temperature: 0.3
-            }
-          }
-        ]
-      }
+      // No mock data - use only real analysis results
       
       setAnalyses(loadedAnalyses)
     } catch (error) {

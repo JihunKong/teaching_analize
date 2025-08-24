@@ -497,7 +497,7 @@ export default function TranscriptionPage() {
           <div>
             <h4>✅ 지원되는 영상</h4>
             <ul style={{ marginLeft: '20px', color: '#666' }}>
-              <li>자막이 있는 YouTube 영상</li>
+              <li>YouTube 영상 (자막 유무 무관)</li>
               <li>공개 또는 제한공개 영상</li>
               <li>한국어, 영어, 일본어, 중국어</li>
             </ul>
@@ -508,7 +508,7 @@ export default function TranscriptionPage() {
             <ul style={{ marginLeft: '20px', color: '#666' }}>
               <li>개인정보가 포함된 영상 주의</li>
               <li>긴 영상은 처리 시간이 오래 걸림</li>
-              <li>자막이 없으면 전사 불가</li>
+              <li>네트워크 상황에 따라 처리 시간 변동 가능</li>
             </ul>
           </div>
         </div>

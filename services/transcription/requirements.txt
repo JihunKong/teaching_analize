@@ -17,5 +17,9 @@ yt-dlp==2023.12.30
 # Celery for async job processing (proven method)
 celery==5.3.4
 
+# Database support for data persistence
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
 # Additional utilities
 requests==2.31.0

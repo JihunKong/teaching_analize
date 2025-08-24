@@ -17,7 +17,7 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -28,6 +28,10 @@ from urllib.parse import urlparse, parse_qs
 
 # Import DOM scraping transcriber
 from browser_transcriber import BrowserTranscriber
+
+# Import database utilities
+from database import get_db, store_transcript, init_database, TranscriptDB
+from sqlalchemy.orm import Session
 
 # Configure logging first
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +54,18 @@ app = FastAPI(
     description="YouTube transcription service for educational analysis",
     version="2.0.0"
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on startup"""
+    try:
+        logger.info("Initializing database...")
+        init_database()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        # Don't fail startup if database initialization fails
 
 # CORS middleware
 app.add_middleware(
@@ -243,28 +259,58 @@ async def process_transcription_job(job_id: str, youtube_url: str, language: str
         job_data = {
             "job_id": job_id,
             "status": "started",
-            "message": "DOM scraping in progress...",
+            "message": "Transcription in progress...",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
             "progress": 10
         }
-        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        # Extended TTL to 24 hours (86400 seconds)
+        redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))
         
         # Update to processing
         job_data.update({
             "status": "progress",
-            "message": "Extracting transcript from YouTube page...",
+            "message": "Extracting transcript from video...",
             "updated_at": datetime.now().isoformat(),
             "progress": 50
         })
-        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))
         
         # Extract video ID and process with DOM scraping
         video_id = extract_video_id(youtube_url)
         result = await get_transcript_with_browser_scraping(video_id, language, youtube_url)
         
         if result["success"]:
-            # Success
+            # Store transcript in database for permanent storage
+            try:
+                from database import SessionLocal
+                db = SessionLocal()
+                
+                # Prepare transcript data for database storage
+                transcript_data = {
+                    "transcript_id": job_id,
+                    "source_type": "youtube",
+                    "source_url": youtube_url,
+                    "video_id": video_id,
+                    "language": language,
+                    "method_used": result.get("method_used", "browser_automation"),
+                    "transcript_text": result.get("transcript", ""),
+                    "segments": result.get("segments", []),
+                    "anonymized": True,
+                    "research_consent": False
+                }
+                
+                # Store in database
+                store_transcript(db, transcript_data)
+                db.close()
+                
+                logger.info(f"Transcript {job_id} stored in database successfully")
+            
+            except Exception as db_error:
+                logger.error(f"Failed to store transcript in database: {str(db_error)}")
+                # Continue even if database storage fails - Redis still has the data
+            
+            # Success - update Redis cache
             job_data.update({
                 "status": "success",
                 "message": f"Transcription completed using {result.get('method_used', 'browser_automation')}",
@@ -274,7 +320,7 @@ async def process_transcription_job(job_id: str, youtube_url: str, language: str
             })
         else:
             # Failure
-            error_msg = result.get("error", "DOM scraping failed")
+            error_msg = result.get("error", "Transcription failed")
             
             job_data.update({
                 "status": "failed",
@@ -284,7 +330,8 @@ async def process_transcription_job(job_id: str, youtube_url: str, language: str
                 "error_details": result.get("error", "Unknown error")
             })
         
-        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        # Store updated job status with 24-hour TTL
+        redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))
         
     except Exception as e:
         logger.error(f"Job {job_id} failed with exception: {str(e)}")
@@ -295,7 +342,7 @@ async def process_transcription_job(job_id: str, youtube_url: str, language: str
             "updated_at": datetime.now().isoformat(),
             "progress": 0
         }
-        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))
 
 @app.get("/health")
 async def health_check():
@@ -323,7 +370,7 @@ async def submit_transcription_job(request: TranscriptionRequest, background_tas
         }
         
         # Store in Redis
-        redis_client.setex(f"job:{job_id}", 3600, json.dumps(job_data))
+        redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))
         
         # Use Celery for proven async processing, fallback to FastAPI background tasks
         if CELERY_AVAILABLE:
@@ -384,11 +431,66 @@ async def get_job_status(job_id: str):
     """Get transcription job status (legacy endpoint)"""
     return await get_job_status_proven(job_id)
 
+@app.get("/api/transcripts/{transcript_id}")
+async def get_transcript_by_id(transcript_id: str, db: Session = Depends(get_db)):
+    """Get transcript data from database by transcript ID (for analysis service)"""
+    try:
+        # First try to get from database
+        transcript_record = db.query(TranscriptDB).filter(
+            TranscriptDB.transcript_id == transcript_id
+        ).first()
+        
+        if transcript_record:
+            return {
+                "success": True,
+                "transcript_id": transcript_record.transcript_id,
+                "source_url": transcript_record.source_url,
+                "video_id": transcript_record.video_id,
+                "transcript_text": transcript_record.transcript_text,
+                "language": transcript_record.language,
+                "method_used": transcript_record.method_used,
+                "character_count": transcript_record.character_count,
+                "word_count": transcript_record.word_count,
+                "segments": transcript_record.segments_json,
+                "created_at": transcript_record.created_at.isoformat() if transcript_record.created_at else None,
+                "teacher_name": transcript_record.teacher_name,
+                "subject": transcript_record.subject,
+                "grade_level": transcript_record.grade_level
+            }
+        
+        # Fallback to Redis if not in database
+        job_data = redis_client.get(f"job:{transcript_id}")
+        if job_data:
+            job_info = json.loads(job_data)
+            if job_info.get("status") == "success" and "result" in job_info:
+                result = job_info["result"]
+                return {
+                    "success": True,
+                    "transcript_id": transcript_id,
+                    "source_url": result.get("video_url"),
+                    "video_id": result.get("video_id"),
+                    "transcript_text": result.get("transcript", ""),
+                    "language": result.get("language", "ko"),
+                    "method_used": result.get("method_used", "unknown"),
+                    "character_count": result.get("character_count", 0),
+                    "word_count": result.get("word_count", 0),
+                    "segments": result.get("segments", []),
+                    "created_at": job_info.get("created_at")
+                }
+        
+        raise HTTPException(status_code=404, detail="Transcript not found")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting transcript {transcript_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @app.get("/api/stats")
-async def get_stats():
+async def get_stats(db: Session = Depends(get_db)):
     """Get service statistics"""
     try:
-        # Get all job keys
+        # Get Redis job stats
         job_keys = redis_client.keys("job:*")
         
         stats = {
@@ -406,6 +508,14 @@ async def get_stats():
                 status_counts[status] = status_counts.get(status, 0) + 1
             
             stats["status_breakdown"] = status_counts
+        
+        # Add database stats
+        try:
+            total_transcripts_in_db = db.query(TranscriptDB).count()
+            stats["transcripts_in_database"] = total_transcripts_in_db
+        except Exception as db_error:
+            logger.error(f"Database stats error: {str(db_error)}")
+            stats["transcripts_in_database"] = "unavailable"
         
         return stats
     
