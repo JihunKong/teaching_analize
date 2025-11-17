@@ -60,42 +60,28 @@ export default function PipelinePage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
       background: 'var(--color-white)',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Brutalist Geometric Background Elements */}
-      <div className="geo-square" style={{
-        top: '10%',
-        right: '5%',
-        width: '200px',
-        height: '200px',
-        opacity: 0.03
-      }}></div>
-      <div className="geo-circle" style={{
-        bottom: '15%',
-        left: '8%',
-        width: '150px',
-        height: '150px',
-        opacity: 0.05
-      }}></div>
-
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
-        padding: 'var(--space-6) var(--space-4)',
+        padding: '0 var(--space-4) var(--space-4) var(--space-4)',
         position: 'relative',
         zIndex: 1
       }}>
         {/* Brutalist Header */}
-        <div style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{
+          marginTop: '0',
+          marginBottom: 'var(--space-6)'
+        }}>
           <h1 className="brutalist-title" style={{
             marginBottom: 'var(--space-3)',
             borderBottom: 'var(--border-massive) solid var(--color-black)',
             paddingBottom: 'var(--space-3)'
           }}>
-            통합 분석 파이프라인
+            통합 분석 시스템
           </h1>
           <p style={{
             fontSize: 'var(--text-xl)',
@@ -143,19 +129,32 @@ export default function PipelinePage() {
                   style={{
                     width: '100%',
                     padding: 'var(--space-3)',
-                    border: 'var(--border-medium) solid var(--color-black)',
+                    border: '3px solid var(--color-black)',
                     borderRadius: '0',
                     fontSize: 'var(--text-base)',
                     fontFamily: 'var(--font-mono)',
-                    background: 'var(--color-white)',
-                    transition: 'all 0.2s ease'
+                    background: 'var(--color-gray-100)',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '4px 4px 0 var(--color-black)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '6px 6px 0 var(--color-black)'
+                    e.currentTarget.style.transform = 'translate(-1px, -1px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (document.activeElement !== e.currentTarget) {
+                      e.currentTarget.style.boxShadow = '4px 4px 0 var(--color-black)'
+                      e.currentTarget.style.transform = 'none'
+                    }
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none'
-                    e.target.style.boxShadow = '6px 6px 0 var(--color-black)'
+                    e.target.style.boxShadow = '8px 8px 0 var(--color-black)'
+                    e.target.style.transform = 'translate(-2px, -2px)'
                   }}
                   onBlur={(e) => {
-                    e.target.style.boxShadow = 'none'
+                    e.target.style.boxShadow = '4px 4px 0 var(--color-black)'
+                    e.target.style.transform = 'none'
                   }}
                 />
               </div>
@@ -182,12 +181,33 @@ export default function PipelinePage() {
                   style={{
                     width: '100%',
                     padding: 'var(--space-3)',
-                    border: 'var(--border-medium) solid var(--color-black)',
+                    border: '3px solid var(--color-black)',
                     borderRadius: '0',
                     fontSize: 'var(--text-base)',
                     fontWeight: 'var(--font-semibold)',
-                    background: 'var(--color-white)',
-                    cursor: 'pointer'
+                    background: 'var(--color-gray-100)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '4px 4px 0 var(--color-black)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '6px 6px 0 var(--color-black)'
+                    e.currentTarget.style.transform = 'translate(-1px, -1px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (document.activeElement !== e.currentTarget) {
+                      e.currentTarget.style.boxShadow = '4px 4px 0 var(--color-black)'
+                      e.currentTarget.style.transform = 'none'
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.outline = 'none'
+                    e.currentTarget.style.boxShadow = '8px 8px 0 var(--color-black)'
+                    e.currentTarget.style.transform = 'translate(-2px, -2px)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.boxShadow = '4px 4px 0 var(--color-black)'
+                    e.currentTarget.style.transform = 'none'
                   }}
                 >
                   <option value="cbil_comprehensive">CBIL 종합 분석</option>
