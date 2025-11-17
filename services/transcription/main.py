@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 AIBOA Transcription Service
-Robust implementation using the proven multi-method approach from TRANSCRIPT_METHOD.md
+YouTube 전사 서비스 - Selenium 브라우저 자동화 방식만 사용
 
-Implements 3-layer fallback strategy:
-1. YouTube Transcript API (primary)
-2. OpenAI Whisper API (secondary fallback) 
-3. Browser Automation (final fallback)
+사용자 요구사항:
+- 절대로 API 방식을 사용하지 않음
+- 오직 Selenium 브라우저 자동화만 사용
+- 사용자가 제공한 정확한 버튼 selector만 사용
 """
 
 import os
@@ -17,7 +17,7 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -26,12 +26,12 @@ import json
 
 from urllib.parse import urlparse, parse_qs
 
-# Import DOM scraping transcriber
-from browser_transcriber import BrowserTranscriber
-
 # Import database utilities
 from database import get_db, store_transcript, init_database, TranscriptDB
 from sqlalchemy.orm import Session
+
+# Import cache manager for transcript caching
+from utils.cache_manager import TranscriptCacheManager
 
 # Configure logging first
 logging.basicConfig(level=logging.INFO)
@@ -39,11 +39,12 @@ logger = logging.getLogger(__name__)
 
 # Import Selenium scraper as fallback
 try:
-    from selenium_youtube_scraper import scrape_youtube_transcript
+    from selenium_youtube_scraper import SeleniumYouTubeScraper
     SELENIUM_AVAILABLE = True
-except ImportError:
+    logger.info("Selenium scraper loaded successfully")
+except ImportError as e:
     SELENIUM_AVAILABLE = False
-    logger.warning("Selenium scraper not available")
+    logger.warning(f"Selenium scraper not available: {e}")
 
 # Disable Celery for now to avoid import issues
 CELERY_AVAILABLE = False
@@ -58,7 +59,8 @@ app = FastAPI(
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables on startup"""
+    """Initialize database and verify Redis connection on startup"""
+    # Database initialization
     try:
         logger.info("Initializing database...")
         init_database()
@@ -66,6 +68,17 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
         # Don't fail startup if database initialization fails
+
+    # Redis connection verification
+    try:
+        logger.info("Testing Redis connection...")
+        redis_client.ping()
+        redis_host = os.getenv('REDIS_HOST', 'redis')
+        redis_port = os.getenv('REDIS_PORT', '6379')
+        logger.info(f"✓ Redis connected successfully at {redis_host}:{redis_port}")
+    except Exception as e:
+        logger.error(f"✗ Redis connection failed: {type(e).__name__} - {str(e)}")
+        logger.error("Transcription service will continue but job status tracking may fail")
 
 # CORS middleware
 app.add_middleware(
@@ -83,6 +96,9 @@ redis_client = redis.Redis(
     password=os.getenv('REDIS_PASSWORD'),
     decode_responses=True
 )
+
+# Initialize cache manager for transcript caching (added 2025-01-11)
+cache_manager = TranscriptCacheManager(redis_client)
 
 class TranscriptionRequest(BaseModel):
     youtube_url: str
@@ -113,119 +129,45 @@ def extract_video_id(youtube_url: str) -> str:
     
     raise ValueError(f"Invalid YouTube URL: {youtube_url}")
 
-async def get_transcript_with_api_methods(video_id: str, language: str = "ko", youtube_url: str = None) -> Dict[str, Any]:
-    """
-    Try API-based methods for transcript extraction (for local environment)
-    """
-    if not youtube_url:
-        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
-    
-    logger.info(f"Trying API methods for video: {video_id}")
-    
-    # Method 1: Try youtube-transcript-api
-    try:
-        from youtube_transcript_api import YouTubeTranscriptApi
-        
-        logger.info("Method 1: Attempting youtube-transcript-api...")
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        
-        # Try to get transcript in requested language or auto-generated
-        transcript = None
-        try:
-            transcript = transcript_list.find_transcript([language, 'ko', 'en'])
-        except:
-            # Try auto-generated transcripts
-            for t in transcript_list:
-                if t.is_generated:
-                    transcript = t
-                    break
-        
-        if transcript:
-            transcript_data = transcript.fetch()
-            transcript_text = ' '.join([item['text'] for item in transcript_data])
-            
-            if transcript_text:
-                logger.info(f"SUCCESS: API transcribed {len(transcript_text)} characters")
-                return {
-                    "success": True,
-                    "video_url": youtube_url,
-                    "video_id": video_id,
-                    "transcript": transcript_text,
-                    "language": language,
-                    "character_count": len(transcript_text),
-                    "word_count": len(transcript_text.split()),
-                    "method_used": "youtube_transcript_api",
-                    "timestamp": time.time(),
-                    "segments": transcript_data
-                }
-        
-    except ImportError:
-        logger.warning("youtube-transcript-api not available")
-    except Exception as e:
-        logger.warning(f"youtube-transcript-api failed: {str(e)}")
-    
-    return {
-        "success": False,
-        "error": "All API methods failed",
-        "video_id": video_id
-    }
-
 async def get_transcript_with_browser_scraping(video_id: str, language: str = "ko", youtube_url: str = None) -> Dict[str, Any]:
     """
-    Enhanced DOM scraping with Selenium fallback - FIXED to use TRANSCRIPT buttons (not CC)
-    Method 1: Playwright browser automation
-    Method 2: Selenium browser automation (fallback)
+    Browser scraping with Selenium (proven method) - Playwright disabled
+    Method 1: Selenium browser automation (PROVEN WORKING)
+    Method 2: Playwright browser automation (DISABLED - has visibility issues)
     """
     if not youtube_url:
         youtube_url = f"https://www.youtube.com/watch?v={video_id}"
-    
-    # Check deployment environment
-    deployment_env = os.getenv("DEPLOYMENT_ENV", "production")
-    logger.info(f"Running in {deployment_env} environment")
-    
-    # Local environment: try API methods first, then fallback to scraping
-    if deployment_env == "local":
-        logger.info("Local environment detected - trying API methods first")
-        api_result = await get_transcript_with_api_methods(video_id, language, youtube_url)
-        if api_result["success"]:
-            return api_result
-        else:
-            logger.info("API methods failed, falling back to browser scraping")
-    
-    logger.info(f"Starting DOM scraping transcription for video: {video_id}")
-    
-    try:
-        # Method 1: Try Playwright browser automation (FIXED)
-        logger.info("Method 1: Attempting Playwright browser automation (TRANSCRIPT-focused)...")
-        
-        async with BrowserTranscriber() as browser_transcriber:
-            result = await browser_transcriber.transcribe_youtube_video(youtube_url, language)
-        
-        if result["success"]:
-            logger.info(f"SUCCESS: Playwright transcribed {result['character_count']} characters")
-            result["method_used"] = "playwright_browser"
-            return result
-        else:
-            logger.warning(f"Playwright failed: {result['error']}")
-    
-    except Exception as e:
-        logger.warning(f"Playwright failed with exception: {str(e)}")
-    
-    # Method 2: Try Selenium browser automation (FIXED) as fallback
+
+    # Use ONLY browser scraping (as specified by user - no API methods)
+    logger.info(f"Starting browser automation for transcript extraction: {video_id}")
+
+    # Method 1: Try Selenium browser automation (PROVEN WORKING)
     if SELENIUM_AVAILABLE:
         try:
-            logger.info("Method 2: Attempting Selenium browser automation (TRANSCRIPT-focused)...")
-            
+            logger.info("Method 1: Attempting Selenium browser automation (PROVEN METHOD)...")
+
+            # Create Selenium scraper instance
+            scraper = SeleniumYouTubeScraper(headless=True)
+
             # Run Selenium in a thread since it's not async
             import asyncio
             loop = asyncio.get_event_loop()
-            transcript_text = await loop.run_in_executor(
-                None, 
-                lambda: scrape_youtube_transcript(youtube_url, headless=True)
+            transcript_data = await loop.run_in_executor(
+                None,
+                lambda: scraper.scrape_youtube_transcript(youtube_url)
             )
-            
-            if transcript_text:
-                logger.info(f"SUCCESS: Selenium transcribed {len(transcript_text)} characters")
+
+            # Clean up driver
+            try:
+                if scraper.driver:
+                    scraper.driver.quit()
+            except:
+                pass
+
+            # Handle string return value from SeleniumYouTubeScraper
+            if transcript_data and isinstance(transcript_data, str):
+                transcript_text = transcript_data
+                logger.info(f"✅ SUCCESS: Selenium transcribed {len(transcript_text)} characters")
                 return {
                     "success": True,
                     "video_url": youtube_url,
@@ -235,21 +177,26 @@ async def get_transcript_with_browser_scraping(video_id: str, language: str = "k
                     "character_count": len(transcript_text),
                     "word_count": len(transcript_text.split()),
                     "method_used": "selenium_browser",
-                    "timestamp": time.time(),
-                    "processing_time": 0  # Will be set by caller
+                    "timestamp": time.time()
                 }
             else:
                 logger.error("Selenium returned empty transcript")
-        
+
         except Exception as e:
             logger.error(f"Selenium failed with exception: {str(e)}")
-    
+    else:
+        logger.error("Selenium not available - cannot proceed")
+
+    # Method 2: Try Playwright as last resort (DISABLED due to visibility issues)
+    # Keeping code for reference but not executing
+    logger.warning("Playwright disabled due to button visibility issues")
+
     # All methods failed
     return {
         "success": False,
-        "error": "All browser automation methods failed. This video may have disabled transcripts or require manual captions.",
+        "error": "Selenium browser automation failed. This video may have disabled transcripts or require manual captions.",
         "video_id": video_id,
-        "methods_tried": ["playwright_browser"] + (["selenium_browser"] if SELENIUM_AVAILABLE else [])
+        "methods_tried": ["selenium_browser"] if SELENIUM_AVAILABLE else []
     }
 
 async def process_transcription_job(job_id: str, youtube_url: str, language: str, export_format: str):
@@ -277,8 +224,21 @@ async def process_transcription_job(job_id: str, youtube_url: str, language: str
         redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))
         
         # Extract video ID and process with DOM scraping
+        # Add 5-minute timeout to prevent infinite loops
+        TRANSCRIPTION_TIMEOUT = 300  # 5 minutes
         video_id = extract_video_id(youtube_url)
-        result = await get_transcript_with_browser_scraping(video_id, language, youtube_url)
+
+        try:
+            result = await asyncio.wait_for(
+                get_transcript_with_browser_scraping(video_id, language, youtube_url),
+                timeout=TRANSCRIPTION_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Transcription timeout for job {job_id} after {TRANSCRIPTION_TIMEOUT} seconds")
+            result = {
+                "success": False,
+                "error": f"Transcription timeout - operation took longer than {TRANSCRIPTION_TIMEOUT // 60} minutes. This video may not have available transcripts."
+            }
         
         if result["success"]:
             # Store transcript in database for permanent storage
@@ -303,9 +263,33 @@ async def process_transcription_job(job_id: str, youtube_url: str, language: str
                 # Store in database
                 store_transcript(db, transcript_data)
                 db.close()
-                
+
                 logger.info(f"Transcript {job_id} stored in database successfully")
-            
+
+                # Store in Redis cache for fast subsequent access (added 2025-01-11)
+                try:
+                    cache_key = cache_manager.generate_youtube_key(video_id, language)
+                    cache_data = {
+                        "transcript_id": job_id,
+                        "transcript": result.get("transcript", ""),
+                        "segments": result.get("segments", []),
+                        "video_id": video_id,
+                        "language": language,
+                        "method_used": result.get("method_used", "browser_automation"),
+                        "character_count": len(result.get("transcript", "")),
+                        "word_count": len(result.get("transcript", "").split()),
+                        "created_at": datetime.now().isoformat(),
+                        "success": True
+                    }
+
+                    # Store in Redis with 7-day TTL
+                    cache_manager.set(cache_key, cache_data)
+                    logger.info(f"Transcript {job_id} cached in Redis: {cache_key}")
+
+                except Exception as cache_error:
+                    logger.error(f"Failed to cache transcript: {str(cache_error)}")
+                    # Don't fail the job if caching fails
+
             except Exception as db_error:
                 logger.error(f"Failed to store transcript in database: {str(db_error)}")
                 # Continue even if database storage fails - Redis still has the data
@@ -355,23 +339,126 @@ async def submit_transcription_job(request: TranscriptionRequest, background_tas
     """
     Submit YouTube URL for transcription using DOM scraping method
     This endpoint uses browser automation to extract transcript segments directly from YouTube page
+
+    WITH CACHING (added 2025-01-11):
+    - Checks Redis cache first for instant response
+    - Falls back to PostgreSQL database if Redis misses
+    - Only creates new transcription job if both caches miss
     """
     try:
+        # Extract video ID for cache lookup
+        video_id = extract_video_id(request.youtube_url)
+
+        # Check cache before starting transcription job
+        cache_key = cache_manager.generate_youtube_key(video_id, request.language)
+
+        # Tier 1: Check Redis hot cache
+        cached_transcript = cache_manager.get(cache_key)
+        if cached_transcript:
+            logger.info(f"Cache HIT (Redis) for video {video_id}")
+
+            # Generate new job_id for status polling (even for cached results)
+            job_id = str(uuid.uuid4())
+
+            # Store job status in Redis for status polling
+            job_data = {
+                "job_id": job_id,
+                "status": "completed",
+                "message": "Retrieved from cache (instant response)",
+                "result": cached_transcript,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+                "cache_hit": True,
+                "cache_source": "redis"
+            }
+            redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))  # 24h TTL
+
+            return {
+                "job_id": job_id,
+                "status": "completed",
+                "message": "Retrieved from cache (instant response)",
+                "result": cached_transcript,
+                "cache_hit": True,
+                "cache_source": "redis",
+                "submitted_at": datetime.now().isoformat()
+            }
+
+        # Tier 2: Check PostgreSQL database
+        from database import SessionLocal
+        db = SessionLocal()
+        try:
+            db_record = db.query(TranscriptDB).filter(
+                TranscriptDB.video_id == video_id,
+                TranscriptDB.language == request.language
+            ).first()
+
+            if db_record:
+                logger.info(f"Cache HIT (PostgreSQL) for video {video_id}")
+
+                # Prepare result data
+                cached_result = {
+                    "transcript_id": db_record.transcript_id,
+                    "transcript": db_record.transcript_text,
+                    "segments": db_record.segments_json,
+                    "video_id": db_record.video_id,
+                    "language": db_record.language,
+                    "method_used": db_record.method_used,
+                    "character_count": db_record.character_count,
+                    "word_count": db_record.word_count,
+                    "created_at": db_record.created_at.isoformat() if db_record.created_at else None,
+                    "success": True
+                }
+
+                # Populate Redis cache for next time
+                cache_manager.set(cache_key, cached_result)
+
+                # Generate new job_id for status polling (even for DB cached results)
+                job_id = str(uuid.uuid4())
+
+                # Store job status in Redis for status polling
+                job_data = {
+                    "job_id": job_id,
+                    "status": "completed",
+                    "message": "Retrieved from database cache",
+                    "result": cached_result,
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "cache_hit": True,
+                    "cache_source": "database"
+                }
+                redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))  # 24h TTL
+
+                return {
+                    "job_id": job_id,
+                    "status": "completed",
+                    "message": "Retrieved from database cache",
+                    "result": cached_result,
+                    "cache_hit": True,
+                    "cache_source": "database",
+                    "submitted_at": datetime.now().isoformat()
+                }
+        finally:
+            db.close()
+
+        # Tier 3: Cache miss - proceed with new transcription
+        logger.info(f"Cache MISS for video {video_id} - starting transcription")
+
         # Generate job ID
         job_id = str(uuid.uuid4())
-        
+
         # Initial job status (matches proven method)
         job_data = {
             "job_id": job_id,
             "status": "PENDING",
             "message": "Job submitted successfully",
             "submitted_at": datetime.now().isoformat(),
-            "estimated_completion": str(time.time() + 120)  # Estimated 2 minutes
+            "estimated_completion": str(time.time() + 120),  # Estimated 2 minutes
+            "cache_hit": False
         }
-        
+
         # Store in Redis
         redis_client.setex(f"job:{job_id}", 86400, json.dumps(job_data))
-        
+
         # Use Celery for proven async processing, fallback to FastAPI background tasks
         if CELERY_AVAILABLE:
             # Use Celery worker (proven method from TRANSCRIPT_METHOD.md)
@@ -391,9 +478,9 @@ async def submit_transcription_job(request: TranscriptionRequest, background_tas
                     request.export_format
                 )
             )
-        
+
         return job_data
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -418,11 +505,22 @@ async def get_job_status_proven(job_id: str):
         job_data = redis_client.get(f"job:{job_id}")
         if not job_data:
             raise HTTPException(status_code=404, detail="Job not found")
-        
+
         return json.loads(job_data)
-    
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is (404 Not Found)
+        raise
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error for job {job_id}: {str(e)}")
+        logger.error(f"Raw data: {job_data[:200] if job_data else 'None'}")
+        raise HTTPException(status_code=500, detail="Invalid job data format")
+    except redis.RedisError as e:
+        logger.error(f"Redis connection error: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=503, detail="Cache service unavailable")
     except Exception as e:
-        logger.error(f"Error getting job status: {str(e)}")
+        logger.error(f"Unexpected error getting job status for {job_id}: {type(e).__name__} - {str(e)}")
+        logger.exception(e)  # Log full traceback
         raise HTTPException(status_code=500, detail="Internal server error")
 
 # Keep legacy endpoint for backward compatibility
@@ -492,13 +590,14 @@ async def get_stats(db: Session = Depends(get_db)):
     try:
         # Get Redis job stats
         job_keys = redis_client.keys("job:*")
-        
+
         stats = {
             "total_jobs": len(job_keys),
             "service": "transcription",
+            "method": "selenium_browser_automation",
             "timestamp": datetime.now().isoformat()
         }
-        
+
         if job_keys:
             # Count by status
             status_counts = {}
@@ -506,9 +605,9 @@ async def get_stats(db: Session = Depends(get_db)):
                 job_data = json.loads(redis_client.get(key))
                 status = job_data.get("status", "unknown")
                 status_counts[status] = status_counts.get(status, 0) + 1
-            
+
             stats["status_breakdown"] = status_counts
-        
+
         # Add database stats
         try:
             total_transcripts_in_db = db.query(TranscriptDB).count()
@@ -516,9 +615,9 @@ async def get_stats(db: Session = Depends(get_db)):
         except Exception as db_error:
             logger.error(f"Database stats error: {str(db_error)}")
             stats["transcripts_in_database"] = "unavailable"
-        
+
         return stats
-    
+
     except Exception as e:
         logger.error(f"Error getting stats: {str(e)}")
         return {"error": "Could not retrieve stats"}

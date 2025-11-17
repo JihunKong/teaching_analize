@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  AnalysisSelectionCard, 
-  ReportConfigurationPanel, 
-  ComprehensiveReportViewer 
+import { useSearchParams } from 'next/navigation'
+import {
+  AnalysisSelectionCard,
+  ReportConfigurationPanel,
+  ComprehensiveReportViewer
 } from '../../components/comprehensive'
 
 interface Analysis {
@@ -50,6 +51,7 @@ interface ComprehensiveReportJob {
 }
 
 export default function ComprehensiveReportsPage() {
+  const searchParams = useSearchParams()
   const [analyses, setAnalyses] = useState<Analysis[]>([])
   const [selectedAnalyses, setSelectedAnalyses] = useState<string[]>([])
   const [frameworks, setFrameworks] = useState<Framework[]>([])
@@ -97,22 +99,65 @@ export default function ComprehensiveReportsPage() {
     setLoading(true)
     try {
       // Load frameworks
-      const frameworksResponse = await fetch('/api/frameworks')
+      const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+      const frameworksResponse = await fetch(`${apiUrl}/api/frameworks`)
       if (frameworksResponse.ok) {
         const frameworksData = await frameworksResponse.json()
         setFrameworks(frameworksData.frameworks || [])
       }
 
+      let loadedAnalyses: Analysis[] = []
+
+      // Check for analysis_id in URL parameter (from workflow redirect)
+      const analysisIdFromUrl = searchParams.get('analysis_id')
+      if (analysisIdFromUrl) {
+        try {
+          console.log('Fetching analysis from URL parameter:', analysisIdFromUrl)
+          const analysisResponse = await fetch(`${apiUrl}/api/analyze/${analysisIdFromUrl}`)
+
+          if (analysisResponse.ok) {
+            const analysisData = await analysisResponse.json()
+            console.log('Analysis data received:', analysisData)
+
+            if (analysisData.status === 'completed' && analysisData.result) {
+              // Convert API response to Analysis format
+              const analysis: Analysis = {
+                analysis_id: analysisIdFromUrl,
+                framework: analysisData.result.evaluation_type || 'cbil_comprehensive',
+                framework_name: 'CBIL 종합 분석',
+                analysis: JSON.stringify(analysisData.result, null, 2), // Full result as JSON string
+                character_count: JSON.stringify(analysisData.result).length,
+                word_count: analysisData.result.matrix_analysis?.statistics?.total_utterances || 0,
+                created_at: analysisData.created_at || new Date().toISOString(),
+                metadata: {
+                  video_url: analysisData.result.matrix_analysis?.statistics?.video_url,
+                  evaluation_type: analysisData.result.evaluation_type,
+                  from_workflow: true
+                }
+              }
+
+              loadedAnalyses.push(analysis)
+
+              // Auto-select this analysis
+              setSelectedAnalyses([analysisIdFromUrl])
+              console.log('Successfully loaded analysis from workflow')
+            }
+          } else {
+            console.error('Failed to fetch analysis:', analysisResponse.status)
+          }
+        } catch (error) {
+          console.error('Error fetching analysis from URL:', error)
+        }
+      }
+
       // Check for parallel analysis results from analysis page
       const storedResults = sessionStorage.getItem('parallelAnalysisResults')
-      let loadedAnalyses: Analysis[] = []
-      
       if (storedResults) {
         try {
           const { results, frameworks: storedFrameworks } = JSON.parse(storedResults)
-          
+
           // Convert parallel results to analyses format
-          loadedAnalyses = Object.entries(results).map(([frameworkId, result]: [string, any]) => {
+          const parallelAnalyses = Object.entries(results).map(([frameworkId, result]: [string, any]) => {
             if (result && result.status === 'completed' && result.result) {
               const framework = storedFrameworks.find((fw: any) => fw.id === frameworkId)
               return {
@@ -131,13 +176,15 @@ export default function ComprehensiveReportsPage() {
             }
             return null
           }).filter(Boolean) as Analysis[]
-          
-          // Auto-select all loaded analyses
-          if (loadedAnalyses.length > 0) {
-            setSelectedAnalyses(loadedAnalyses.map(a => a.analysis_id))
+
+          loadedAnalyses = [...loadedAnalyses, ...parallelAnalyses]
+
+          // Auto-select all parallel analyses
+          if (parallelAnalyses.length > 0) {
+            setSelectedAnalyses(prev => [...prev, ...parallelAnalyses.map(a => a.analysis_id)])
             setFromParallelAnalysis(true)
           }
-          
+
           // Clear stored data after loading
           sessionStorage.removeItem('parallelAnalysisResults')
         } catch (error) {
@@ -145,8 +192,6 @@ export default function ComprehensiveReportsPage() {
         }
       }
 
-      // No mock data - use only real analysis results
-      
       setAnalyses(loadedAnalyses)
     } catch (error) {
       console.error('Error loading data:', error)
@@ -213,8 +258,9 @@ export default function ComprehensiveReportsPage() {
     
     try {
       const selectedAnalysisData = analyses.filter(a => selectedAnalyses.includes(a.analysis_id))
+      const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
       
-      const response = await fetch('/api/reports/generate/comprehensive', {
+      const response = await fetch(`${apiUrl}/api/reports/generate/comprehensive`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -288,8 +334,9 @@ export default function ComprehensiveReportsPage() {
 
   const pollReportStatus = async (jobId: string) => {
     const checkStatus = async () => {
+      const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
       try {
-        const response = await fetch(`/api/reports/status/${jobId}`)
+        const response = await fetch(`${apiUrl}/api/reports/status/${jobId}`)
         const data = await response.json()
         
         setReportJob(data)
@@ -320,33 +367,70 @@ export default function ComprehensiveReportsPage() {
         <title>${reportConfig.title}</title>
         <meta charset="utf-8">
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { background: #667eea; color: white; padding: 20px; border-radius: 10px; }
-          .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-          .framework { margin: 15px 0; padding: 15px; background: #f8f9fa; }
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+          }
+          .report-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+          }
+          .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+          }
+          .framework {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+          }
+          @media (max-width: 768px) {
+            .report-container {
+              max-width: 100%;
+              padding: 20px;
+            }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>${reportConfig.title}</h1>
-          <p>생성일: ${new Date().toLocaleDateString('ko-KR')}</p>
-        </div>
-        <div class="section">
-          <h2>분석 개요</h2>
-          <p>선택된 ${selectedAnalyses.length}개 분석 결과를 종합한 보고서입니다.</p>
-        </div>
-        <div class="section">
-          <h2>프레임워크별 분석</h2>
-          ${selectedAnalyses.map(id => {
-            const analysis = analyses.find(a => a.analysis_id === id)
-            return analysis ? `
-              <div class="framework">
-                <h3>${analysis.framework_name}</h3>
-                <p>가중치: ${reportConfig.frameworkWeights[analysis.framework]?.toFixed(1) || 1.0}</p>
-                <div>${analysis.analysis.substring(0, 500)}...</div>
-              </div>
-            ` : ''
-          }).join('')}
+        <div class="report-container">
+          <div class="header">
+            <h1>${reportConfig.title}</h1>
+            <p>생성일: ${new Date().toLocaleDateString('ko-KR')}</p>
+          </div>
+          <div class="section">
+            <h2>분석 개요</h2>
+            <p>선택된 ${selectedAnalyses.length}개 분석 결과를 종합한 보고서입니다.</p>
+          </div>
+          <div class="section">
+            <h2>프레임워크별 분석</h2>
+            ${selectedAnalyses.map(id => {
+              const analysis = analyses.find(a => a.analysis_id === id)
+              return analysis ? `
+                <div class="framework">
+                  <h3>${analysis.framework_name}</h3>
+                  <p>가중치: ${reportConfig.frameworkWeights[analysis.framework]?.toFixed(1) || 1.0}</p>
+                  <div>${analysis.analysis.substring(0, 500)}...</div>
+                </div>
+              ` : ''
+            }).join('')}
+          </div>
         </div>
       </body>
       </html>
@@ -361,6 +445,37 @@ export default function ComprehensiveReportsPage() {
         newWindow.document.close()
       }
     }
+  }
+
+  // Single analysis mode - display HTML report in iframe
+  const singleAnalysisId = searchParams.get('analysis_id')
+  if (singleAnalysisId && !loading) {
+    const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+
+    return (
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        margin: 0,
+        padding: 0,
+        overflow: 'hidden',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        background: '#f8f9fa'
+      }}>
+        <iframe
+          src={`${apiUrl}/api/reports/html/${singleAnalysisId}`}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            display: 'block'
+          }}
+          title="분석 보고서"
+        />
+      </div>
+    )
   }
 
   if (loading) {
@@ -392,14 +507,14 @@ export default function ComprehensiveReportsPage() {
           <h3>📚 분석 선택 ({selectedAnalyses.length}/{filteredAndSortedAnalyses.length})</h3>
           <div>
             <button 
-              className="btn btn-secondary" 
+              className="btn-brutalist btn-brutalist-outline" 
               onClick={selectAllAnalyses}
               style={{ marginRight: '10px' }}
             >
               전체 선택
             </button>
             <button 
-              className="btn btn-secondary" 
+              className="btn-brutalist btn-brutalist-outline" 
               onClick={clearSelection}
             >
               선택 해제
@@ -410,20 +525,20 @@ export default function ComprehensiveReportsPage() {
         {/* Filters */}
         <div className="grid grid-2" style={{ marginBottom: '20px' }}>
           <div className="form-group">
-            <label className="form-label">검색</label>
+            <label className="form-brutalist-label">검색</label>
             <input
               type="text"
-              className="form-input"
+              className="form-brutalist-input"
               placeholder="프레임워크명 또는 내용 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="form-group">
-            <label className="form-label">생성일 이후</label>
+            <label className="form-brutalist-label">생성일 이후</label>
             <input
               type="date"
-              className="form-input"
+              className="form-brutalist-input"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
             />
@@ -432,9 +547,9 @@ export default function ComprehensiveReportsPage() {
 
         <div className="grid grid-3" style={{ marginBottom: '20px' }}>
           <div className="form-group">
-            <label className="form-label">프레임워크 필터</label>
+            <label className="form-brutalist-label">프레임워크 필터</label>
             <select
-              className="form-select"
+              className="form-brutalist-select"
               value={frameworkFilter}
               onChange={(e) => setFrameworkFilter(e.target.value)}
             >
@@ -445,9 +560,9 @@ export default function ComprehensiveReportsPage() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">정렬 기준</label>
+            <label className="form-brutalist-label">정렬 기준</label>
             <select
-              className="form-select"
+              className="form-brutalist-select"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
             >
@@ -457,9 +572,9 @@ export default function ComprehensiveReportsPage() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">정렬 순서</label>
+            <label className="form-brutalist-label">정렬 순서</label>
             <select
-              className="form-select"
+              className="form-brutalist-select"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as any)}
             >
@@ -506,7 +621,7 @@ export default function ComprehensiveReportsPage() {
         
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <button
-            className="btn btn-large"
+            className="btn-brutalist btn-brutalist-large"
             onClick={generateComprehensiveReport}
             disabled={selectedAnalyses.length === 0 || generatingReport}
             style={{ marginRight: '10px' }}
@@ -541,9 +656,9 @@ export default function ComprehensiveReportsPage() {
             </div>
             
             {typeof reportJob.progress === 'number' && (
-              <div className="progress">
+              <div className="progress-brutalist">
                 <div 
-                  className="progress-bar" 
+                  className="progress-brutalist-bar" 
                   style={{ width: `${reportJob.progress}%` }}
                 >
                   {Math.round(reportJob.progress)}%
@@ -573,7 +688,7 @@ export default function ComprehensiveReportsPage() {
           
           <div className="grid">
             {generatedReports.map((report, index) => (
-              <div key={report.job_id} className="card">
+              <div key={report.job_id} className="card-brutalist">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <h4 style={{ margin: 0 }}>종합 보고서 #{generatedReports.length - index}</h4>
                   <span style={{
@@ -593,7 +708,7 @@ export default function ComprehensiveReportsPage() {
                 
                 <div style={{ textAlign: 'center' }}>
                   <button
-                    className="btn"
+                    className="btn-brutalist"
                     onClick={() => viewReport(report)}
                     disabled={report.status !== 'completed'}
                   >

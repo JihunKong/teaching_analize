@@ -95,8 +95,9 @@ const YouTubeVerification: React.FC<YouTubeVerificationProps> = ({
 
   // Handle thumbnail load error
   const handleThumbnailError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    console.warn('Failed to load YouTube thumbnail')
-    e.currentTarget.style.display = 'none'
+    console.warn('Failed to load YouTube thumbnail, using fallback')
+    // Use a placeholder SVG data URI instead of hiding
+    e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="60" viewBox="0 0 80 60"%3E%3Crect width="80" height="60" fill="%23e0e0e0"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="12" fill="%23666" text-anchor="middle" dominant-baseline="middle"%3EVideo%3C/text%3E%3C/svg%3E'
   }, [])
 
   return (

@@ -74,66 +74,81 @@ class TranscriptDB(Base):
     public_dataset = Column(Boolean, default=False)
 
 class AnalysisResultDB(Base):
-    """Enhanced analysis results supporting all 13 frameworks"""
+    """Analysis results matching actual PostgreSQL schema from init.sql"""
     __tablename__ = "analysis_results"
-    
+
+    # Core columns matching init.sql schema (17 columns total)
     id = Column(Integer, primary_key=True, index=True)
-    analysis_id = Column(String, unique=True, index=True, nullable=False)
-    transcript_id = Column(String, index=True)  # Link to transcript
+    uuid = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, nullable=False)  # FK to users table
+    transcription_job_id = Column(Integer)  # FK to transcription_jobs table
     
-    # Analysis framework
-    framework = Column(String, index=True, nullable=False)  # cbil, student_discussion, etc.
-    framework_version = Column(String, default="1.0")
+    # Analysis metadata
+    analysis_type = Column(String, nullable=False, default="comprehensive")
+    framework = Column(String, index=True, nullable=False, default="cbil")
     
-    # Analysis configuration
-    temperature = Column(Float, default=0.3)  # LLM temperature used
-    model_used = Column(String, default="solar-pro")
-    prompt_version = Column(String)
+    # Content fields
+    input_text = Column(Text, nullable=False)  # Original input text
+    results = Column(JSON, nullable=False)  # JSONB: analysis_text, structured_results, scores, recommendations
     
-    # Results
-    analysis_text = Column(Text, nullable=False)  # Full analysis result
-    structured_results = Column(JSON)  # Parsed/structured data
-    scores = Column(JSON)  # Framework-specific scoring
-    recommendations = Column(JSON)  # List of recommendations
-    
-    # Quality metrics
-    confidence_score = Column(Float)  # Overall confidence in analysis
-    processing_time = Column(Float)  # Time taken to process
-    character_count = Column(Integer)  # Characters in input text
-    word_count = Column(Integer)  # Words in input text
-    
-    # Educational metadata (copied from transcript)
-    teacher_name = Column(String, index=True)
-    subject = Column(String, index=True)
-    grade_level = Column(String, index=True)
-    school_type = Column(String, index=True)
+    # Metrics
+    overall_score = Column(Float)  # Overall score (0-100)
+    primary_level = Column(String)  # Primary cognitive level
+    processing_time_seconds = Column(Float)  # Processing time
+    word_count = Column(Integer)  # Word count
+    sentence_count = Column(Integer)  # Sentence count
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    completed_at = Column(DateTime)
     
-    # Research flags
-    research_approved = Column(Boolean, default=False)
-    anonymized = Column(Boolean, default=True)
+    # Sharing and access
+    is_public = Column(Boolean, default=False)
+    shared_with = Column(JSON, default=list)  # JSONB: list of user IDs
+    analysis_metadata = Column("metadata", JSON, default=dict)  # JSONB: framework_version, temperature, model_used, teacher info, etc.
     
     def to_dict(self):
         """Convert to dictionary for API responses"""
+        # Extract data from JSONB fields
+        results_data = self.results or {}
+        metadata_data = self.analysis_metadata or {}
+        
         return {
-            "analysis_id": self.analysis_id,
-            "transcript_id": self.transcript_id,
+            "analysis_id": self.uuid,
+            "uuid": self.uuid,
+            "user_id": self.user_id,
+            "transcription_job_id": self.transcription_job_id,
+            "analysis_type": self.analysis_type,
             "framework": self.framework,
-            "framework_version": self.framework_version,
-            "analysis_text": self.analysis_text,
-            "structured_results": self.structured_results,
-            "scores": self.scores,
-            "recommendations": self.recommendations,
-            "teacher_name": self.teacher_name,
-            "subject": self.subject,
-            "grade_level": self.grade_level,
+            "input_text": self.input_text,
+            
+            # Extract from results JSONB
+            "analysis_text": results_data.get("analysis_text"),
+            "structured_results": results_data.get("structured_results"),
+            "scores": results_data.get("scores"),
+            "recommendations": results_data.get("recommendations"),
+            
+            # Metrics
+            "overall_score": self.overall_score,
+            "primary_level": self.primary_level,
+            "processing_time": self.processing_time_seconds,
+            "word_count": self.word_count,
+            "sentence_count": self.sentence_count,
+            
+            # Extract from metadata JSONB
+            "framework_version": metadata_data.get("framework_version"),
+            "temperature": metadata_data.get("temperature"),
+            "model_used": metadata_data.get("model_used"),
+            "teacher_name": metadata_data.get("teacher_name"),
+            "subject": metadata_data.get("subject"),
+            "grade_level": metadata_data.get("grade_level"),
+            "school_type": metadata_data.get("school_type"),
+            "character_count": metadata_data.get("character_count"),
+            
+            # Timestamps and access
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
-            "confidence_score": self.confidence_score,
-            "processing_time": self.processing_time
+            "is_public": self.is_public,
+            "shared_with": self.shared_with or [],
+            "metadata": self.analysis_metadata or {}
         }
 
 class TeacherProfileDB(Base):
@@ -303,38 +318,74 @@ def store_transcript(db: Session, transcript_data: Dict[str, Any]) -> Transcript
         raise
 
 def store_analysis(db: Session, analysis_data: Dict[str, Any]) -> AnalysisResultDB:
-    """Store analysis result for research purposes"""
+    """
+    Store analysis result with data transformation to match database schema.
+    Consolidates flat fields into JSONB columns (results and metadata).
+    """
     try:
-        # Create analysis record
-        analysis_record = AnalysisResultDB(
-            analysis_id=analysis_data.get("analysis_id"),
-            transcript_id=analysis_data.get("transcript_id"),
-            framework=analysis_data.get("framework"),
-            temperature=analysis_data.get("temperature", 0.3),
-            model_used=analysis_data.get("model_used", "solar-pro"),
-            analysis_text=analysis_data.get("analysis_text", ""),
-            structured_results=analysis_data.get("structured_results"),
-            scores=analysis_data.get("scores"),
-            recommendations=analysis_data.get("recommendations"),
-            processing_time=analysis_data.get("processing_time"),
-            character_count=analysis_data.get("character_count", 0),
-            word_count=analysis_data.get("word_count", 0),
-            teacher_name=analysis_data.get("teacher_name"),
-            subject=analysis_data.get("subject"),
-            grade_level=analysis_data.get("grade_level"),
-            school_type=analysis_data.get("school_type"),
-            completed_at=datetime.utcnow(),
-            anonymized=analysis_data.get("anonymized", True),
-            research_approved=analysis_data.get("research_approved", False)
-        )
+        # Extract input_text (required NOT NULL field)
+        input_text = analysis_data.get("input_text") or analysis_data.get("text", "")
+        if not input_text:
+            raise ValueError("input_text is required but was not provided")
         
+        # Calculate sentence_count if not provided
+        sentence_count = analysis_data.get("sentence_count")
+        if sentence_count is None and input_text:
+            # Simple sentence count (split by ., !, ?)
+            import re
+            sentences = re.split(r'[.!?]+', input_text)
+            sentence_count = len([s for s in sentences if s.strip()])
+        
+        # Consolidate analysis results into results JSONB
+        results = {
+            "analysis_text": analysis_data.get("analysis_text", ""),
+            "structured_results": analysis_data.get("structured_results"),
+            "scores": analysis_data.get("scores"),
+            "recommendations": analysis_data.get("recommendations"),
+        }
+        
+        # Consolidate metadata into metadata JSONB
+        metadata = {
+            "framework_version": analysis_data.get("framework_version", "1.0"),
+            "temperature": analysis_data.get("temperature", 1.0),
+            "model_used": analysis_data.get("model_used", "solar-pro"),
+            "prompt_version": analysis_data.get("prompt_version"),
+            "teacher_name": analysis_data.get("teacher_name"),
+            "subject": analysis_data.get("subject"),
+            "grade_level": analysis_data.get("grade_level"),
+            "school_type": analysis_data.get("school_type"),
+            "character_count": analysis_data.get("character_count", len(input_text)),
+            "confidence_score": analysis_data.get("confidence_score"),
+            "anonymized": analysis_data.get("anonymized", True),
+            "research_approved": analysis_data.get("research_approved", False),
+        }
+        
+        # Create analysis record with correct schema
+        analysis_record = AnalysisResultDB(
+            uuid=analysis_data.get("analysis_id"),
+            user_id=analysis_data.get("user_id", 1),  # Default to user_id=1
+            transcription_job_id=analysis_data.get("transcription_job_id"),
+            analysis_type=analysis_data.get("analysis_type", "comprehensive"),
+            framework=analysis_data.get("framework", "cbil"),
+            input_text=input_text,
+            results=results,
+            overall_score=analysis_data.get("overall_score"),
+            primary_level=analysis_data.get("primary_level"),
+            processing_time_seconds=analysis_data.get("processing_time") or analysis_data.get("processing_time_seconds"),
+            word_count=analysis_data.get("word_count", len(input_text.split())),
+            sentence_count=sentence_count,
+            is_public=analysis_data.get("is_public", False),
+            shared_with=analysis_data.get("shared_with", []),
+            analysis_metadata=metadata
+        )
+
         db.add(analysis_record)
         db.commit()
         db.refresh(analysis_record)
-        
-        logger.info(f"Stored analysis: {analysis_record.analysis_id}")
+
+        logger.info(f"Stored analysis: {analysis_record.uuid}")
         return analysis_record
-        
+
     except Exception as e:
         logger.error(f"Failed to store analysis: {str(e)}")
         db.rollback()

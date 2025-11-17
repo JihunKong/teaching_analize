@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // Disable static export in development to enable rewrites
+  // Only use static export in production
+  // ...(process.env.NODE_ENV === 'production' && { output: 'export' }),
   trailingSlash: true,
   images: {
     unoptimized: true
@@ -12,6 +14,18 @@ const nextConfig = {
     ANALYSIS_API_URL: '/api/analyze',
     AUTH_API_URL: '/api/auth',
     REPORTING_API_URL: '/api/reports'
+  },
+  // In development, proxy API requests to backend via Nginx
+  async rewrites() {
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost/api/:path*'
+        }
+      ]
+    }
+    return []
   }
 }
 

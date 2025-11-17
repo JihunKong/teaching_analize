@@ -1,0 +1,166 @@
+# Ideal Teaching Patterns for CBIL Analysis
+# 4 patterns representing different effective teaching approaches
+
+patterns:
+  direct_instruction:
+    name: "직접 교수법 (Direct Instruction)"
+    description: "교사 중심의 체계적 설명과 명확한 개념 전달에 초점을 둔 교수법"
+    characteristics:
+      - "명확하고 체계적인 개념 설명 (L1-L2 중심)"
+      - "도입부에서 학습목표 명시 및 선행지식 확인"
+      - "전개부에서 집중적인 설명과 예시 제공"
+      - "정리부에서 핵심 개념 재확인"
+      - "관리적 발화를 통한 수업 흐름 유지"
+    
+    # Stage distribution (must sum to 1.0)
+    stage_distribution:
+      introduction: 0.15  # 도입 15%
+      development: 0.70   # 전개 70% (설명 집중)
+      closing: 0.15       # 정리 15%
+    
+    # Context distribution by stage (each must sum to 1.0)
+    context_by_stage:
+      introduction:
+        explanation: 0.50  # 학습목표 설명
+        question: 0.15     # 선행지식 확인 질문
+        feedback: 0.10
+        facilitation: 0.10
+        management: 0.15   # 수업 시작 관리
+      development:
+        explanation: 0.60  # 개념 설명 집중
+        question: 0.10
+        feedback: 0.15
+        facilitation: 0.05
+        management: 0.10
+      closing:
+        explanation: 0.40  # 핵심 정리
+        question: 0.20     # 이해도 확인
+        feedback: 0.15
+        facilitation: 0.10
+        management: 0.15
+    
+    # Cognitive level distribution (must sum to 1.0)
+    level_distribution:
+      L1: 0.50  # 기초 개념 50%
+      L2: 0.40  # 적용 40%
+      L3: 0.10  # 고차원 10%
+
+  inquiry_based:
+    name: "탐구 기반 학습 (Inquiry-Based Learning)"
+    description: "학생의 질문과 사고를 유도하며 탐구를 촉진하는 교수법"
+    characteristics:
+      - "개방형 질문을 통한 사고 유발"
+      - "학생 주도 탐구 과정 촉진"
+      - "높은 인지수준(L3) 활동 장려"
+      - "즉각적이고 발전적인 피드백 제공"
+      - "학생 간 상호작용 촉진"
+    
+    stage_distribution:
+      introduction: 0.20  # 탐구 문제 제시
+      development: 0.65   # 탐구 활동
+      closing: 0.15       # 탐구 결과 정리
+    
+    context_by_stage:
+      introduction:
+        explanation: 0.20
+        question: 0.40     # 탐구 질문 제시
+        feedback: 0.10
+        facilitation: 0.20  # 탐구 방향 안내
+        management: 0.10
+      development:
+        explanation: 0.15
+        question: 0.30     # 지속적 질문
+        feedback: 0.25     # 탐구 과정 피드백
+        facilitation: 0.25  # 탐구 촉진
+        management: 0.05
+      closing:
+        explanation: 0.25
+        question: 0.25     # 성찰 질문
+        feedback: 0.30     # 탐구 결과 피드백
+        facilitation: 0.15
+        management: 0.05
+    
+    level_distribution:
+      L1: 0.20  # 기초 20%
+      L2: 0.35  # 적용 35%
+      L3: 0.45  # 고차원 45% (분석, 종합, 평가)
+
+  scaffolding:
+    name: "비계 설정 교수법 (Scaffolding)"
+    description: "학습자의 현재 수준에서 점진적으로 고차원 사고로 이끄는 교수법"
+    characteristics:
+      - "단계적 난이도 상승 (L1 → L2 → L3)"
+      - "적절한 시점에 지원 제공 후 점진적 독립"
+      - "명확한 설명과 모델링 제시"
+      - "학습자 수준에 맞는 피드백"
+      - "전개부에서 체계적 비계 제공"
+    
+    stage_distribution:
+      introduction: 0.20  # 기초 확인
+      development: 0.65   # 점진적 비계
+      closing: 0.15       # 독립적 적용
+    
+    context_by_stage:
+      introduction:
+        explanation: 0.45  # 명확한 학습 목표
+        question: 0.20     # 선행지식 확인
+        feedback: 0.10
+        facilitation: 0.15
+        management: 0.10
+      development:
+        explanation: 0.35
+        question: 0.20
+        feedback: 0.25     # 지속적 피드백
+        facilitation: 0.15  # 비계 제공
+        management: 0.05
+      closing:
+        explanation: 0.20
+        question: 0.30     # 독립적 적용 확인
+        feedback: 0.30     # 최종 피드백
+        facilitation: 0.15
+        management: 0.05
+    
+    level_distribution:
+      L1: 0.35  # 기초 35% (도입)
+      L2: 0.45  # 적용 45% (전개)
+      L3: 0.20  # 고차원 20% (정리)
+
+  balanced_dialogic:
+    name: "균형 대화형 수업 (Balanced Dialogic Teaching)"
+    description: "모든 맥락과 수준을 균형있게 활용하는 대화 중심 교수법"
+    characteristics:
+      - "교사-학생 간 활발한 대화"
+      - "다양한 맥락의 균형있는 사용"
+      - "모든 인지수준 골고루 자극"
+      - "설명, 질문, 피드백의 조화"
+      - "학생 참여와 사고 촉진"
+    
+    stage_distribution:
+      introduction: 0.20
+      development: 0.60
+      closing: 0.20
+    
+    context_by_stage:
+      introduction:
+        explanation: 0.30
+        question: 0.25
+        feedback: 0.15
+        facilitation: 0.20
+        management: 0.10
+      development:
+        explanation: 0.25
+        question: 0.25
+        feedback: 0.25
+        facilitation: 0.20
+        management: 0.05
+      closing:
+        explanation: 0.25
+        question: 0.25
+        feedback: 0.25
+        facilitation: 0.20
+        management: 0.05
+    
+    level_distribution:
+      L1: 0.33  # 기초 33%
+      L2: 0.34  # 적용 34%
+      L3: 0.33  # 고차원 33%

@@ -15,6 +15,7 @@ import {
   ChartData
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import { LINE_CHART_CONFIG } from '../../config/chartConfig'
 
 ChartJS.register(
   CategoryScale,
@@ -34,6 +35,7 @@ export interface LineChartProps {
   height?: number
   width?: number
   title?: string
+  subtitle?: string
   showLegend?: boolean
   responsive?: boolean
   maintainAspectRatio?: boolean
@@ -48,6 +50,7 @@ const LineChart: React.FC<LineChartProps> = ({
   height = 300,
   width,
   title,
+  subtitle,
   showLegend = true,
   responsive = true,
   maintainAspectRatio = false,
@@ -56,109 +59,6 @@ const LineChart: React.FC<LineChartProps> = ({
 }) => {
   const chartRef = useRef<ChartJS<'line'>>(null)
 
-  const defaultOptions: ChartOptions<'line'> = {
-    responsive,
-    maintainAspectRatio,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        display: showLegend,
-        position: 'top' as const,
-        labels: {
-          usePointStyle: true,
-          padding: 20,
-          font: {
-            size: 12,
-            family: 'Malgun Gothic, sans-serif'
-          }
-        }
-      },
-      title: {
-        display: !!title,
-        text: title,
-        font: {
-          size: 16,
-          weight: 'bold',
-          family: 'Malgun Gothic, sans-serif'
-        },
-        padding: {
-          top: 10,
-          bottom: 30
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: 'white',
-        bodyColor: 'white',
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        borderWidth: 1,
-        cornerRadius: 6,
-        displayColors: true,
-        callbacks: {
-          label: function(context) {
-            const label = context.dataset.label || ''
-            const value = context.parsed.y
-            return `${label}: ${typeof value === 'number' ? value.toFixed(1) : value}%`
-          }
-        }
-      },
-      filler: {
-        propagate: false
-      }
-    },
-    scales: {
-      x: {
-        grid: {
-          display: true,
-          color: 'rgba(0, 0, 0, 0.05)'
-        },
-        ticks: {
-          font: {
-            family: 'Malgun Gothic, sans-serif'
-          }
-        }
-      },
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
-        },
-        ticks: {
-          font: {
-            family: 'Malgun Gothic, sans-serif'
-          },
-          callback: function(value) {
-            return `${value}%`
-          }
-        }
-      }
-    },
-    elements: {
-      point: {
-        radius: 4,
-        hoverRadius: 6,
-        borderWidth: 2,
-        hoverBorderWidth: 3
-      },
-      line: {
-        borderWidth: 3,
-        tension: smooth ? 0.3 : 0,
-        fill: showArea
-      }
-    },
-    animation: {
-      duration: 1000,
-      easing: 'easeInOutQuart'
-    },
-    hover: {
-      // animationDuration: 300 // Chart.js v4 property difference
-    }
-  }
-
-  // Process data to add area fill if requested
   const processedData = showArea ? {
     ...data,
     datasets: data.datasets.map((dataset, index) => ({
@@ -167,21 +67,34 @@ const LineChart: React.FC<LineChartProps> = ({
       backgroundColor: Array.isArray(dataset.backgroundColor) 
         ? dataset.backgroundColor 
         : typeof dataset.backgroundColor === 'string'
-        ? dataset.backgroundColor + '20' // Add transparency
+        ? dataset.backgroundColor + '20'
         : 'rgba(75, 192, 192, 0.2)'
     }))
   } : data
 
-  const mergedOptions = {
-    ...defaultOptions,
+  const mergedOptions: ChartOptions<'line'> = {
+    ...LINE_CHART_CONFIG,
+    responsive,
+    maintainAspectRatio,
     ...options,
     plugins: {
-      ...defaultOptions.plugins,
-      ...options.plugins
+      ...LINE_CHART_CONFIG.plugins,
+      ...options.plugins,
+      legend: {
+        ...LINE_CHART_CONFIG.plugins?.legend,
+        ...(options.plugins?.legend || {}),
+        display: showLegend,
+      },
+      title: {
+        display: false,
+      },
     },
-    scales: {
-      ...defaultOptions.scales,
-      ...options.scales
+    elements: {
+      ...LINE_CHART_CONFIG.elements,
+      line: {
+        ...LINE_CHART_CONFIG.elements?.line,
+        tension: smooth ? 0.3 : 0,
+      }
     }
   }
 
@@ -193,14 +106,26 @@ const LineChart: React.FC<LineChartProps> = ({
   }, [data])
 
   return (
-    <div className={`chart-container ${className}`}>
-      <Line
-        ref={chartRef}
-        data={processedData}
-        options={mergedOptions}
-        height={height}
-        width={width}
-      />
+    <div className={`chart-brutalist-container ${className}`}>
+      {title && (
+        <div className="chart-brutalist-title">
+          {title}
+        </div>
+      )}
+      {subtitle && (
+        <div className="chart-brutalist-subtitle">
+          {subtitle}
+        </div>
+      )}
+      <div className="chart-brutalist-canvas">
+        <Line
+          ref={chartRef}
+          data={processedData}
+          options={mergedOptions}
+          height={height}
+          width={width}
+        />
+      </div>
     </div>
   )
 }

@@ -10,11 +10,12 @@ AIBOA (AI-Based Observation and Analysis) is a modular classroom teaching analys
 
 ✅ **Successfully Deployed on Railway with Full Features:**
 - **Transcription Service**: https://teachinganalize-production.up.railway.app (Port 8080)
-  - ✅ Whisper API integration for speech-to-text
-  - ✅ YouTube URL support with caption extraction
+  - ✅ Selenium browser automation for YouTube transcript extraction
+  - ✅ YouTube URL support with automatic caption extraction
   - ✅ Multiple export formats (JSON, SRT, TXT)
   - ✅ Async job processing with background tasks
   - ✅ API authentication with X-API-Key header
+  - ⚠️ **IMPORTANT**: ONLY uses Selenium (NO WhisperX, NO Whisper API)
   
 - **Analysis Service**: https://amusedfriendship-production.up.railway.app (Port 8080)
   - ✅ CBIL 7-level classification system implemented
@@ -33,11 +34,12 @@ AIBOA (AI-Based Observation and Analysis) is a modular classroom teaching analys
 
 The project follows a modular microservice architecture with two main independent services:
 
-1. **Transcription Service**: Handles video/audio to text conversion
-   - Processes video/audio files and YouTube URLs
-   - Uses OpenAI Whisper or YouTube captions for STT
+1. **Transcription Service**: Handles YouTube video to text conversion
+   - Processes YouTube URLs ONLY using Selenium browser automation
+   - Extracts captions directly from YouTube's transcript feature
    - Exports in JSON, SRT, TXT formats
    - FastAPI-based service on port 8000
+   - **CRITICAL**: NO WhisperX, NO Whisper API, ONLY Selenium
 
 2. **Analysis Service**: Performs CBIL (Cognitive Burden of Instructional Language) analysis
    - Analyzes text/scripts for teaching quality

@@ -3,7 +3,7 @@ Enhanced Database Models for AIBOA Analysis Service
 Supports all 13 analysis frameworks and research data accumulation
 """
 
-from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, Text, JSON, Boolean
+from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, Text, JSON, Boolean, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import NullPool
@@ -36,22 +36,22 @@ Base = declarative_base()
 class TranscriptDB(Base):
     """Store transcript data for research purposes"""
     __tablename__ = "transcripts"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     transcript_id = Column(String, unique=True, index=True, nullable=False)
-    
+
     # Video/Audio source information
     source_type = Column(String, nullable=False)  # 'youtube', 'upload', 'live'
     source_url = Column(String)  # YouTube URL or file path
     video_id = Column(String, index=True)  # YouTube video ID or file ID
-    
+
     # Transcription metadata
     language = Column(String, default="ko")
     method_used = Column(String)  # 'browser_scraping', 'whisper', 'youtube_api'
     character_count = Column(Integer)
     word_count = Column(Integer)
     duration_seconds = Column(Float)
-    
+
     # Educational context
     teacher_name = Column(String)
     subject = Column(String, index=True)
@@ -59,19 +59,24 @@ class TranscriptDB(Base):
     school_type = Column(String)  # 'elementary', 'middle', 'high', 'university'
     lesson_title = Column(String)
     lesson_objectives = Column(Text)
-    
+
     # Content
     transcript_text = Column(Text, nullable=False)
     segments_json = Column(JSON)  # Timestamped segments
-    
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
-    
+
     # Privacy and research flags
     anonymized = Column(Boolean, default=True)
     research_consent = Column(Boolean, default=False)
     public_dataset = Column(Boolean, default=False)
+
+    # Composite index for fast cache lookups (added 2025-01-11 for transcript caching)
+    __table_args__ = (
+        Index('idx_video_language', 'video_id', 'language'),
+    )
 
 class AnalysisResultDB(Base):
     """Enhanced analysis results supporting all 13 frameworks"""

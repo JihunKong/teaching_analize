@@ -1,0 +1,309 @@
+/**
+ * TVAS Design System - Typography
+ * Korean-optimized Pretendard font system
+ * Aligned with frontend monochrome design
+ */
+
+:root {
+  /* ============================================
+     FONT FAMILIES
+     ============================================ */
+
+  /* Primary font - Pretendard Korean-optimized */
+  --font-primary: 'Pretendard', -apple-system, BlinkMacSystemFont,
+                  'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+
+  /* Monospace - Code, data, metrics */
+  --font-mono: 'SF Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
+
+  /* ============================================
+     TYPE SCALE - Major Second (1.125 ratio)
+     Base: 16px (1rem) - Same as frontend
+     ============================================ */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+
+  /* ============================================
+     FONT WEIGHTS
+     ============================================ */
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Legacy aliases */
+  --weight-regular: var(--font-regular);
+  --weight-medium: var(--font-medium);
+  --weight-semibold: var(--font-semibold);
+  --weight-bold: var(--font-bold);
+
+  /* ============================================
+     LINE HEIGHTS
+     ============================================ */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* ============================================
+     LETTER SPACING
+     ============================================ */
+  --tracking-tight: -0.02em;
+  --tracking-normal: -0.01em;
+  --tracking-wide: 0.02em;
+}
+
+/* ============================================
+   BASE TYPOGRAPHY STYLES
+   ============================================ */
+body {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-regular);
+  line-height: var(--leading-normal);
+  color: var(--color-gray-900);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   HEADING STYLES - Monochrome
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-primary);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-normal);
+  color: var(--color-black);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+h1 {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+h2 {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+}
+
+h3 {
+  font-size: var(--text-2xl);
+}
+
+h4 {
+  font-size: var(--text-xl);
+}
+
+h5 {
+  font-size: var(--text-lg);
+}
+
+h6 {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+/* ============================================
+   PARAGRAPH & TEXT
+   ============================================ */
+p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  line-height: var(--leading-relaxed);
+  color: var(--color-gray-700);
+}
+
+.lead {
+  font-size: var(--text-lg);
+  font-weight: var(--font-regular);
+  line-height: var(--leading-relaxed);
+  color: var(--color-gray-800);
+}
+
+.small, small {
+  font-size: var(--text-sm);
+  color: var(--color-gray-600);
+}
+
+.text-tiny {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+}
+
+/* ============================================
+   FONT WEIGHT UTILITIES
+   ============================================ */
+.font-regular { font-weight: var(--font-regular); }
+.font-medium { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+.font-bold { font-weight: var(--font-bold); }
+
+/* ============================================
+   TEXT ALIGNMENT
+   ============================================ */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-justify { text-align: justify; }
+
+/* ============================================
+   TEXT COLORS - Monochrome
+   ============================================ */
+.text-black { color: var(--color-black); }
+.text-gray-900 { color: var(--color-gray-900); }
+.text-gray-700 { color: var(--color-gray-700); }
+.text-gray-600 { color: var(--color-gray-600); }
+.text-gray-500 { color: var(--color-gray-500); }
+.text-white { color: var(--color-white); }
+
+/* ============================================
+   LINKS - Monochrome
+   ============================================ */
+a {
+  color: var(--color-black);
+  text-decoration: underline;
+  text-decoration-color: var(--color-gray-300);
+  text-underline-offset: 2px;
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-gray-900);
+  text-decoration-color: var(--color-black);
+}
+
+a:active {
+  color: var(--color-gray-800);
+}
+
+/* ============================================
+   LISTS
+   ============================================ */
+ul, ol {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+  line-height: var(--leading-relaxed);
+}
+
+/* ============================================
+   CODE & MONOSPACE
+   ============================================ */
+code, kbd, samp {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background-color: var(--color-gray-100);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  color: var(--color-gray-900);
+}
+
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  background-color: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 4px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* ============================================
+   BLOCKQUOTE
+   ============================================ */
+blockquote {
+  margin: 1.5rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--color-black);
+  color: var(--color-gray-700);
+  font-style: italic;
+}
+
+blockquote p {
+  margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   HORIZONTAL RULE
+   ============================================ */
+hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--color-gray-200);
+}
+
+/* ============================================
+   SPECIAL TEXT STYLES
+   ============================================ */
+.text-uppercase { text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.text-lowercase { text-transform: lowercase; }
+.text-capitalize { text-transform: capitalize; }
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-nowrap {
+  white-space: nowrap;
+}
+
+/* ============================================
+   EMPHASIS
+   ============================================ */
+strong, b {
+  font-weight: var(--font-semibold);
+  color: var(--color-black);
+}
+
+em, i {
+  font-style: italic;
+}
+
+mark {
+  background-color: var(--color-gray-200);
+  color: var(--color-black);
+  padding: 0.125rem 0.25rem;
+  border-radius: 2px;
+}
+
+/* ============================================
+   DISPLAY TEXT - Large Numbers/Scores
+   ============================================ */
+.display-score {
+  font-family: var(--font-mono);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  line-height: 1;
+  color: var(--color-black);
+  letter-spacing: var(--tracking-tight);
+}
+
+.display-metric {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+}

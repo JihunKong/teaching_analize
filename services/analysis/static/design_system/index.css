@@ -1,0 +1,72 @@
+/**
+ * TVAS Design System - Main Entry Point
+ * Diagnostic medical diagnostic report design system
+ *
+ * Import Order:
+ * 1. Colors (foundation)
+ * 2. Typography (text system)
+ * 3. Spacing (layout primitives)
+ * 4. Components (complex UI elements)
+ */
+
+@import url('./colors.css');
+@import url('./typography.css');
+@import url('./spacing.css');
+@import url('./components.css');
+
+/**
+ * Global Reset & Base Styles
+ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--gray-50);
+}
+
+/**
+ * Print Optimizations
+ */
+@media print {
+  body {
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 2cm;
+  }
+}
+
+/**
+ * Accessibility
+ */
+:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/**
+ * Smooth Scrolling
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

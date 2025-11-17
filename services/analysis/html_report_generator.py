@@ -9,6 +9,7 @@ import json
 import re
 import statistics
 import numpy as np
+import markdown  # For rendering markdown in HTML reports
 
 class HTMLReportGenerator:
     """Generate professional HTML reports for all analysis frameworks"""
@@ -16,6 +17,7 @@ class HTMLReportGenerator:
     # Framework definitions matching the API structure
     FRAMEWORK_NAMES = {
         "cbil": "개념기반 탐구 수업(CBIL) 분석",
+        "cbil_comprehensive": "CBIL + Module 3 종합 분석",
         "student_discussion": "학생주도 질문과 대화 및 토론 수업",
         "lesson_coaching": "수업 설계와 실행 코칭",
         "questioning": "교사의 질문 유형 분석",
@@ -36,6 +38,11 @@ class HTMLReportGenerator:
             "score_range": (0, 3),
             "score_type": "discrete",
             "dimensions": 7
+        },
+        "cbil_comprehensive": {
+            "score_range": (0, 100),
+            "score_type": "comprehensive",
+            "dimensions": 22  # 7 CBIL stages + 15 Module 3 metrics
         },
         "student_discussion": {
             "score_range": (0, 10),
@@ -113,9 +120,15 @@ class HTMLReportGenerator:
     
     def extract_chart_data(self, analysis_text: str, framework: str) -> Dict[str, Any]:
         """Extract chart data from analysis text based on framework"""
-        
+
         if framework == "cbil":
             return self._extract_cbil_data(analysis_text)
+        elif framework == "cbil_comprehensive":
+            # For comprehensive results, analysis_text will be a dict with result data
+            if isinstance(analysis_text, dict):
+                return self._extract_cbil_comprehensive_data(analysis_text)
+            else:
+                return self._extract_generic_data(analysis_text, framework)
         elif framework == "student_discussion":
             return self._extract_discussion_data(analysis_text)
         elif framework == "lesson_coaching":
@@ -278,7 +291,78 @@ class HTMLReportGenerator:
             "data": scores,
             "backgroundColor": "#4BC0C0"
         }
-    
+
+    def _extract_cbil_comprehensive_data(self, result_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract comprehensive CBIL + Module 3 data for visualization"""
+
+        # Extract CBIL 7-stage scores
+        cbil_insights = result_data.get('coaching_feedback', {}).get('cbil_insights', {})
+        cbil_scores_data = cbil_insights.get('cbil_scores', {})
+        cbil_stage_scores = cbil_scores_data.get('stage_scores', {})
+
+        # Extract Module 3 metrics
+        quantitative_metrics = result_data.get('quantitative_metrics', {})
+
+        # Prepare CBIL stage chart
+        cbil_stages = ["Engage", "Focus", "Investigate", "Organize", "Generalize", "Transfer", "Reflect"]
+        cbil_scores = []
+        for stage in ["engage", "focus", "investigate", "organize", "generalize", "transfer", "reflect"]:
+            stage_data = cbil_stage_scores.get(stage, {})
+            score = stage_data.get('score', 0)
+            # Normalize to 0-100 scale (CBIL is 0-3)
+            normalized = (score / 3.0) * 100
+            cbil_scores.append(round(normalized, 1))
+
+        # Prepare Module 3 metrics chart (top 10 metrics)
+        metric_labels = []
+        metric_scores = []
+
+        for metric_name, metric_data in list(quantitative_metrics.items())[:10]:
+            # Clean metric name
+            clean_name = metric_name.replace('_', ' ').title()
+            metric_labels.append(clean_name)
+            metric_scores.append(round(metric_data.get('normalized_score', 0), 1))
+
+        # Pattern matching info
+        pattern_match = result_data.get('pattern_matching', {}).get('best_match', {})
+        pattern_name = pattern_match.get('pattern_name', 'Unknown')
+        similarity_score = pattern_match.get('similarity_score', 0) * 100
+
+        # CBIL alignment score
+        cbil_alignment = cbil_insights.get('cbil_alignment_score', 0) * 100
+
+        return {
+            "type": "comprehensive",
+            "title": "CBIL + Module 3 종합 분석",
+            "cbil_chart": {
+                "type": "radar",
+                "title": "CBIL 7단계 점수",
+                "labels": cbil_stages,
+                "data": cbil_scores,
+                "backgroundColor": "rgba(102, 126, 234, 0.2)",
+                "borderColor": "#667eea"
+            },
+            "metrics_chart": {
+                "type": "bar",
+                "title": "Module 3 정량 지표 (Top 10)",
+                "labels": metric_labels,
+                "data": metric_scores,
+                "backgroundColor": "#4BC0C0"
+            },
+            "pattern_info": {
+                "name": pattern_name,
+                "similarity": round(similarity_score, 1),
+                "cbil_alignment": round(cbil_alignment, 1)
+            },
+            "summary": {
+                "cbil_total": cbil_scores_data.get('total_score', 0),
+                "cbil_max": cbil_scores_data.get('max_total_score', 21),
+                "cbil_percentage": round(cbil_scores_data.get('overall_percentage', 0), 1),
+                "pattern_match": pattern_name,
+                "total_utterances": result_data.get('input_metadata', {}).get('total_utterances', 0)
+            }
+        }
+
     def _extract_generic_data(self, analysis_text: str, framework: str) -> Dict[str, Any]:
         """Extract data for generic frameworks"""
         # Create a simple word frequency or score-based visualization
@@ -343,8 +427,85 @@ class HTMLReportGenerator:
     
     def generate_chart_js_config(self, chart_data: Dict[str, Any]) -> str:
         """Generate Chart.js configuration for different chart types"""
-        
-        if chart_data["type"] == "radar":
+
+        if chart_data["type"] == "comprehensive":
+            # For comprehensive CBIL reports, generate multiple charts
+            cbil_chart_data = chart_data["cbil_chart"]
+            metrics_chart_data = chart_data["metrics_chart"]
+
+            # Generate CBIL radar chart config
+            cbil_config = {
+                "type": "radar",
+                "data": {
+                    "labels": cbil_chart_data["labels"],
+                    "datasets": [{
+                        "label": cbil_chart_data["title"],
+                        "data": cbil_chart_data["data"],
+                        "backgroundColor": cbil_chart_data.get("backgroundColor", "rgba(102, 126, 234, 0.2)"),
+                        "borderColor": cbil_chart_data.get("borderColor", "#667eea"),
+                        "pointBackgroundColor": "#667eea",
+                        "pointBorderColor": "#fff",
+                        "pointHoverBackgroundColor": "#fff",
+                        "pointHoverBorderColor": "#667eea"
+                    }]
+                },
+                "options": {
+                    "responsive": True,
+                    "scales": {
+                        "r": {
+                            "angleLines": {"display": False},
+                            "suggestedMin": 0,
+                            "suggestedMax": 100
+                        }
+                    },
+                    "plugins": {
+                        "legend": {"display": False},
+                        "title": {
+                            "display": True,
+                            "text": cbil_chart_data["title"]
+                        }
+                    }
+                }
+            }
+
+            # Generate Module 3 metrics bar chart config
+            metrics_config = {
+                "type": "bar",
+                "data": {
+                    "labels": metrics_chart_data["labels"],
+                    "datasets": [{
+                        "data": metrics_chart_data["data"],
+                        "backgroundColor": metrics_chart_data.get("backgroundColor", "#4BC0C0")
+                    }]
+                },
+                "options": {
+                    "responsive": True,
+                    "plugins": {
+                        "title": {
+                            "display": True,
+                            "text": metrics_chart_data["title"]
+                        },
+                        "legend": {"display": False}
+                    },
+                    "scales": {
+                        "y": {
+                            "beginAtZero": True,
+                            "max": 100
+                        }
+                    }
+                }
+            }
+
+            # Return both configs as JSON with special marker for dual chart
+            return json.dumps({
+                "type": "comprehensive",
+                "cbil_chart": cbil_config,
+                "metrics_chart": metrics_config,
+                "pattern_info": chart_data["pattern_info"],
+                "summary": chart_data["summary"]
+            })
+
+        elif chart_data["type"] == "radar":
             config = {
                 "type": "radar",
                 "data": {
@@ -452,31 +613,55 @@ class HTMLReportGenerator:
         
         return json.dumps(config, ensure_ascii=False)
     
-    def generate_recommendations(self, analysis_text: str, framework: str) -> List[str]:
-        """Generate framework-specific recommendations"""
+    def generate_recommendations(self, analysis_text, framework: str) -> List[str]:
+        """Generate framework-specific recommendations
+
+        Args:
+            analysis_text: Can be either a string (text to parse) or a list (pre-extracted recommendations)
+            framework: Framework name
+
+        Returns:
+            List of recommendation strings
+        """
         recommendations = []
-        
-        # Extract existing recommendations from analysis text
-        lines = analysis_text.split('\n')
-        current_rec = ""
-        
-        for line in lines:
-            line = line.strip()
-            
-            # Look for recommendation markers
-            if any(marker in line for marker in ['대안 제시', '권장사항', '개선', '제안', '추천', '권고']):
-                if current_rec:
-                    recommendations.append(current_rec.strip())
-                current_rec = line
-            elif line.startswith(('•', '-', '*', '1.', '2.', '3.')) or '할 수 있다' in line or '필요하다' in line:
-                if current_rec:
-                    current_rec += "\n" + line
-                else:
-                    recommendations.append(line)
-        
-        if current_rec and current_rec not in recommendations:
-            recommendations.append(current_rec.strip())
-        
+
+        # Handle pre-extracted list (e.g., from coaching feedback)
+        if isinstance(analysis_text, list):
+            for item in analysis_text:
+                if isinstance(item, dict):
+                    # Format dictionary recommendations
+                    title = item.get('title', item.get('action', ''))
+                    description = item.get('description', item.get('rationale', ''))
+                    if title:
+                        rec = f"**{title}**"
+                        if description:
+                            rec += f"\n{description}"
+                        recommendations.append(rec)
+                elif isinstance(item, str) and item.strip():
+                    recommendations.append(item.strip())
+
+        # Handle text parsing (original logic)
+        elif isinstance(analysis_text, str):
+            lines = analysis_text.split('\n')
+            current_rec = ""
+
+            for line in lines:
+                line = line.strip()
+
+                # Look for recommendation markers
+                if any(marker in line for marker in ['대안 제시', '권장사항', '개선', '제안', '추천', '권고']):
+                    if current_rec:
+                        recommendations.append(current_rec.strip())
+                    current_rec = line
+                elif line.startswith(('•', '-', '*', '1.', '2.', '3.')) or '할 수 있다' in line or '필요하다' in line:
+                    if current_rec:
+                        current_rec += "\n" + line
+                    else:
+                        recommendations.append(line)
+
+            if current_rec and current_rec not in recommendations:
+                recommendations.append(current_rec.strip())
+
         # Add generic recommendations if none found
         if not recommendations:
             framework_name = self.FRAMEWORK_NAMES.get(framework, framework)
@@ -485,9 +670,36 @@ class HTMLReportGenerator:
                 f"🎯 분석된 내용을 동료 교사와 공유하여 피드백을 받아보세요.",
                 f"💡 정기적인 분석을 통해 교수법 개선 효과를 측정하세요."
             ]
-        
+
         return recommendations[:5]
-    
+
+    def _markdown_to_html(self, text: str) -> str:
+        """
+        Convert markdown text to HTML
+
+        Args:
+            text: Markdown-formatted text (e.g., "**bold**", "- list item")
+
+        Returns:
+            HTML-formatted text
+
+        Note:
+            Uses markdown library with extensions for enhanced rendering:
+            - extra: Tables, fenced code blocks, footnotes
+            - nl2br: Newlines converted to <br> tags
+        """
+        if not text:
+            return ""
+
+        # Convert markdown to HTML with common extensions
+        html = markdown.markdown(
+            text,
+            extensions=['extra', 'nl2br'],
+            output_format='html5'
+        )
+
+        return html
+
     def aggregate_analysis_data(self, analysis_results: List[Dict[str, Any]], framework_weights: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
         """Aggregate multiple analysis results into unified insights"""
         if not analysis_results:
@@ -844,11 +1056,15 @@ class HTMLReportGenerator:
         .chart-container {{
             position: relative;
             height: 400px;
-            margin: 30px 0;
+            margin: 30px auto;
+            max-width: 800px;
             padding: 20px;
             background: #f8f9fa;
             border-radius: 15px;
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }}
         
         .insights-section {{
@@ -1098,6 +1314,45 @@ class HTMLReportGenerator:
             }}
         `;
         document.head.appendChild(style);
+
+        // postMessage: Send iframe content height to parent window
+        function sendHeightToParent() {{
+            try {{
+                const body = document.body;
+                const html = document.documentElement;
+
+                // Get the maximum height among different measurements
+                const height = Math.max(
+                    body.scrollHeight,
+                    body.offsetHeight,
+                    html.clientHeight,
+                    html.scrollHeight,
+                    html.offsetHeight
+                );
+
+                // Add padding for safety (50px)
+                const paddedHeight = height + 50;
+
+                console.log('Sending comprehensive report height to parent:', paddedHeight);
+                window.parent.postMessage({{
+                    type: 'iframe-height',
+                    height: paddedHeight
+                }}, window.location.origin);
+            }} catch (e) {{
+                console.error('Failed to send height to parent:', e);
+            }}
+        }}
+
+        // Send initial height after page load and animations complete
+        setTimeout(sendHeightToParent, 800);
+
+        // ResizeObserver: Monitor content size changes
+        if (typeof ResizeObserver !== 'undefined') {{
+            const resizeObserver = new ResizeObserver(() => {{
+                sendHeightToParent();
+            }});
+            resizeObserver.observe(document.body);
+        }}
     </script>
 </body>
 </html>
@@ -1152,15 +1407,23 @@ class HTMLReportGenerator:
     
     def generate_html_report(self, analysis_data: Dict[str, Any]) -> str:
         """Generate complete HTML report with Chart.js"""
-        
+
         framework = analysis_data.get('framework', 'generic')
         framework_name = self.FRAMEWORK_NAMES.get(framework, framework)
         analysis_text = analysis_data.get('analysis', '')
         timestamp = datetime.now().strftime('%Y년 %m월 %d일 %H:%M')
         analysis_id = analysis_data.get('analysis_id', 'N/A')
-        
-        # Extract chart data
-        chart_data = self.extract_chart_data(analysis_text, framework)
+
+        # Extract chart data - for cbil_comprehensive, pass full result data
+        if framework == 'cbil_comprehensive':
+            # For comprehensive analysis, pass the full result structure
+            result_data = analysis_data.get('result', analysis_data)
+            chart_data = self.extract_chart_data(result_data, framework)
+            # Use CBIL analysis text for display
+            analysis_text = result_data.get('cbil_analysis_text', analysis_text)
+        else:
+            chart_data = self.extract_chart_data(analysis_text, framework)
+
         chart_config = self.generate_chart_js_config(chart_data)
         
         # Generate recommendations
@@ -1254,15 +1517,19 @@ class HTMLReportGenerator:
         .chart-container {{
             position: relative;
             height: 400px;
-            margin: 30px 0;
+            margin: 30px auto;
+            max-width: 800px;
             padding: 20px;
             background: #f8f9fa;
             border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }}
         
         .stats-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             margin: 25px 0;
         }}
@@ -1406,14 +1673,14 @@ class HTMLReportGenerator:
 
     <div class="section">
         <h2>💡 개선 권장사항</h2>
-        {''.join([f'<div class="recommendation-item">{rec}</div>' for rec in recommendations])}
+        {''.join([f'<div class="recommendation-item">{self._markdown_to_html(rec)}</div>' for rec in recommendations])}
     </div>
 
     <div class="section">
         <h2>📝 상세 분석 결과</h2>
         <button class="toggle-button" onclick="toggleAnalysis()">분석 내용 보기/숨기기</button>
         <div id="analysisContent" class="collapsible-content">
-            <div class="analysis-content">{analysis_text}</div>
+            <div class="analysis-content">{self._markdown_to_html(analysis_text)}</div>
         </div>
     </div>
 
@@ -1446,7 +1713,53 @@ class HTMLReportGenerator:
             if (analysisText.length < 500) {{
                 document.getElementById('analysisContent').classList.add('active');
             }}
+
+            // Send initial height to parent window
+            sendHeightToParent();
         }});
+
+        // postMessage: Send iframe content height to parent window
+        function sendHeightToParent() {{
+            try {{
+                const body = document.body;
+                const html = document.documentElement;
+
+                // Get the maximum height among different measurements
+                const height = Math.max(
+                    body.scrollHeight,
+                    body.offsetHeight,
+                    html.clientHeight,
+                    html.scrollHeight,
+                    html.offsetHeight
+                );
+
+                // Add padding for safety (50px)
+                const paddedHeight = height + 50;
+
+                console.log('Sending iframe height to parent:', paddedHeight);
+                window.parent.postMessage({{
+                    type: 'iframe-height',
+                    height: paddedHeight
+                }}, window.location.origin);
+            }} catch (e) {{
+                console.error('Failed to send height to parent:', e);
+            }}
+        }}
+
+        // ResizeObserver: Monitor content size changes
+        if (typeof ResizeObserver !== 'undefined') {{
+            const resizeObserver = new ResizeObserver(() => {{
+                sendHeightToParent();
+            }});
+            resizeObserver.observe(document.body);
+        }}
+
+        // Also send height when analysis content is toggled
+        const originalToggle = toggleAnalysis;
+        toggleAnalysis = function() {{
+            originalToggle();
+            setTimeout(sendHeightToParent, 100);
+        }};
     </script>
 </body>
 </html>

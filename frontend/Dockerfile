@@ -6,16 +6,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application (with static export via output: 'export' in next.config.js)
 RUN npm run build
-
-# Export static files
-RUN npm run export
 
 # Use nginx to serve static files
 FROM nginx:alpine

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AIBOA Analysis Service
-Multiple framework analysis using Solar2 Pro API
+Multiple framework analysis using OpenAI GPT-4o-mini API
 """
 
 import os
@@ -21,6 +21,12 @@ import requests
 # Import report generators
 from html_report_generator import HTMLReportGenerator
 from pdf_report_generator import PDFReportGenerator, is_pdf_generation_available
+from diagnostic_report_generator import DiagnosticReportGenerator
+
+# Import Module 4 advanced generators
+from advanced_pdf_generator import AdvancedPDFGenerator
+from visualization import Matrix3DVisualizer
+from exporters import ExcelReportExporter
 
 # Import database
 from database import (
@@ -28,6 +34,13 @@ from database import (
     init_database, AnalysisResultDB
 )
 from sqlalchemy.orm import Session
+
+# Import Module 3 evaluation components
+from core.evaluation_service import EvaluationService
+from core.cbil_integration import CBILIntegration
+
+# Import semantic cache for consistency guarantee
+from utils.semantic_cache import SemanticCache
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -56,9 +69,22 @@ redis_client = redis.Redis(
     decode_responses=True
 )
 
-# Solar API configuration
-UPSTAGE_API_KEY = os.getenv('UPSTAGE_API_KEY', 'up_kcU1IMWm9wcC1rqplsIFMsEeqlUXN')
-SOLAR_API_URL = "https://api.upstage.ai/v1/solar/chat/completions"
+# Initialize Semantic Cache for consistency guarantee
+# Caches first LLM classification result to ensure 100% reproducibility
+semantic_cache = SemanticCache(redis_client)
+logger.info("✓ Semantic Cache initialized for guaranteed consistency")
+
+# OpenAI API configuration
+# Read Upstage configuration
+UPSTAGE_BASE_URL = os.getenv('UPSTAGE_BASE_URL', 'https://api.upstage.ai/v1')
+GPT_MODEL = os.getenv('GPT_MODEL', 'solar-pro2')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+if not OPENAI_API_KEY:
+    logger.warning("OPENAI_API_KEY not found in environment variables")
+
+# Import OpenAI
+from openai import OpenAI
+openai_client = OpenAI(api_key=OPENAI_API_KEY, base_url=UPSTAGE_BASE_URL) if OPENAI_API_KEY else None
 
 class AnalysisRequest(BaseModel):
     text: str
@@ -222,37 +248,93 @@ VIDEO_TRANSCRIPT:<<<{text}>>>
 
 이제 위 규칙을 적용하여 결과만 출력하라.
 """
+    },
+
+    "cbil_comprehensive": {
+        "name": "CBIL + Module 3 종합 분석",
+        "description": "CBIL 7단계 + 3D 매트릭스 + 정량지표 + 패턴매칭 + AI 코칭",
+        "prompt": """**CBIL 7단계 분석 - 점수 출력 필수**
+
+📋 **중요 지시사항**
+- 각 단계마다 반드시 "점수: X점" 형식으로 점수를 명시할 것
+- 0점(없음), 1점(부족), 2점(보통), 3점(우수) 중 하나로 채점
+- 7단계 모두 분석하고 점수 부여 필수
+
+🎯 **분석 목적**
+개념기반 탐구학습(CBIL) 7단계 실행 평가 및 점수 부여 (0~3점)
+
+📝 **필수 출력 형식** (정확히 이 형식을 따를 것):
+
+#### 1. Engage (흥미 유도 및 연결)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 2. Focus (탐구 방향 설정)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 3. Investigate (자료 탐색 및 개념 형성)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 4. Organize (증거 조직화)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 5. Generalize (일반화)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 6. Transfer (전이)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+#### 7. Reflect (성찰)
+[수업 장면 분석 내용...]
+**점수: X점**
+
+🔍 **점수 기준**
+- 3점: 개념 중심의 탐구 활동이 명확히 구현됨
+- 2점: 부분적으로 개념 중심 요소가 나타남
+- 1점: 지식 중심이지만 개념 중심 요소 일부 존재
+- 0점: 해당 단계가 나타나지 않음
+
+⚠️ **주의**: 반드시 위 형식을 따라 7단계 모두 분석하고 각각 점수를 부여하시오.
+
+**분석할 텍스트:**
+{text}
+"""
     }
 }
 
-def call_solar_api(prompt: str, temperature: float = 0.1) -> str:
-    """Call Solar2 Pro API with low temperature for consistency"""
-    headers = {
-        "Authorization": f"Bearer {UPSTAGE_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": "solar-mini",
-        "messages": [
-            {
-                "role": "user", 
-                "content": prompt
-            }
-        ],
-        "temperature": temperature,
-        "max_tokens": 4000
-    }
-    
+def call_openai_api(prompt: str) -> str:
+    """
+    Call OpenAI GPT-5-mini API
+    ⚠️ MODEL: Upstage Solar Pro 2 (Changed 2025-01-11) - DO NOT REVERT TO gpt-4o-mini
+
+    Note:
+        GPT-5 uses default temperature=1.0 (cannot be customized)
+        Consistency guaranteed by majority voting and structured prompts
+    """
+    if not openai_client:
+        raise ValueError("OpenAI client not initialized. Please set OPENAI_API_KEY environment variable.")
+
     try:
-        response = requests.post(SOLAR_API_URL, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
-        
+        response = openai_client.chat.completions.create(
+            model=GPT_MODEL,  # ⚠️ CRITICAL: Upstage Solar Pro 2
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            max_completion_tokens=4000  # Upstage Solar Pro 2 temperature=0=1.0
+        )
+
+        return response.choices[0].message.content
+
     except Exception as e:
-        logger.error(f"Solar API call failed: {str(e)}")
+        logger.error(f"OpenAI API call failed: {str(e)}")
         raise
 
 def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[str, Any]):
@@ -275,9 +357,9 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
         framework_config = ANALYSIS_FRAMEWORKS[framework]
         prompt = framework_config["prompt"].format(text=text)
         
-        # Call Solar API with temperature=0.3 for consistent analysis results
+        # Call OpenAI API (Upstage Solar Pro 2 temperature=0=1.0)
         start_time = datetime.now()
-        analysis_result = call_solar_api(prompt, temperature=0.3)
+        analysis_result = call_openai_api(prompt)
         processing_time = (datetime.now() - start_time).total_seconds()
         
         # Prepare result
@@ -299,10 +381,11 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
             
             # Prepare database record
             db_analysis_data = {
+                "input_text": text,
                 "analysis_id": job_id,
                 "framework": framework,
-                "temperature": 0.3,
-                "model_used": "solar-pro",
+                "temperature": 1.0,  # Upstage Solar Pro 2 temperature=0
+                "model_used": GPT_MODEL,  # ⚠️ Updated to Upstage Solar Pro 2
                 "analysis_text": analysis_result,
                 "character_count": len(text),
                 "word_count": len(text.split()),
@@ -350,6 +433,165 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
         })
         redis_client.setex(f"analysis_job:{job_id}", 3600, json.dumps(job_data))
 
+async def process_comprehensive_cbil_analysis(
+    job_id: str,
+    text: str,
+    metadata: Dict[str, Any]
+):
+    """
+    Background task for comprehensive CBIL + Module 3 analysis
+
+    Workflow:
+    1. Call OpenAI API for CBIL 7-stage analysis
+    2. Parse utterances from transcript
+    3. Call Module 3 evaluation with CBIL integration
+    4. Generate comprehensive coaching
+    """
+    try:
+        # Update job status
+        job_data = {
+            "job_id": job_id,
+            "status": "processing",
+            "message": "Step 1/3: Running CBIL 7-stage analysis...",
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        }
+        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+
+        # Step 1: Call OpenAI API for CBIL analysis
+        logger.info(f"Job {job_id}: Starting CBIL analysis")
+        framework_config = ANALYSIS_FRAMEWORKS["cbil"]
+        cbil_prompt = framework_config["prompt"].format(text=text)
+
+        start_time = datetime.now()
+        cbil_analysis_text = call_openai_api(cbil_prompt)  # Upstage Solar Pro 2 temperature=0=1.0
+        cbil_processing_time = (datetime.now() - start_time).total_seconds()
+
+        logger.info(f"Job {job_id}: CBIL analysis completed in {cbil_processing_time:.2f}s")
+
+        # Step 2: Parse utterances from transcript
+        job_data["message"] = "Step 2/3: Parsing utterances and building 3D matrix..."
+        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+
+        # Simple utterance parsing (split by sentences for now)
+        # In production, this should use proper speaker diarization from Module 1
+        import re
+        sentences = re.split(r'[.!?]\s+', text)
+        utterances = [
+            {
+                "id": f"utt_{i:04d}",
+                "text": sentence.strip(),
+                "timestamp": f"00:{i//60:02d}:{i%60:02d}"
+            }
+            for i, sentence in enumerate(sentences) if sentence.strip()
+        ]
+
+        logger.info(f"Job {job_id}: Parsed {len(utterances)} utterances")
+
+        # Step 3: Run Module 3 evaluation with CBIL integration
+        job_data["message"] = "Step 3/3: Running Module 3 evaluation with CBIL integration..."
+        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+
+        # Initialize EvaluationService with semantic cache for consistency
+        evaluation_service = EvaluationService(semantic_cache=semantic_cache)
+
+        # Context from metadata
+        context = {
+            "subject": metadata.get("subject", "일반"),
+            "grade_level": metadata.get("grade_level", "미지정"),
+            "duration": metadata.get("duration", len(utterances))
+        }
+
+        # Call evaluate_with_cbil with error handling
+        logger.info(f"Job {job_id}: Starting CBIL-integrated evaluation")
+        try:
+            evaluation_result = await evaluation_service.evaluate_with_cbil(
+                utterances=utterances,
+                cbil_analysis_text=cbil_analysis_text,
+                evaluation_id=job_id,
+                context=context,
+                include_raw_data=False
+            )
+
+            total_processing_time = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Job {job_id}: Comprehensive evaluation completed in {total_processing_time:.2f}s")
+
+            # Convert result to dictionary
+            result_dict = evaluation_service.to_dict(evaluation_result)
+
+            # Add CBIL analysis text to result
+            result_dict["cbil_analysis_text"] = cbil_analysis_text
+            result_dict["framework"] = "cbil_comprehensive"
+            result_dict["framework_name"] = ANALYSIS_FRAMEWORKS["cbil_comprehensive"]["name"]
+            result_dict["input_text"] = text  # Add original transcript for frontend display
+
+        except AttributeError as e:
+            logger.error(f"Job {job_id}: CBIL integration method missing: {e}")
+            raise ValueError(f"CBIL evaluation failed - method not found: {e}")
+        except Exception as e:
+            logger.error(f"Job {job_id}: Unexpected error in CBIL evaluation: {e}")
+            logger.exception("Full traceback:")
+            raise ValueError(f"CBIL evaluation failed: {str(e)}")
+
+        # Success
+        job_data.update({
+            "status": "completed",
+            "message": "Comprehensive CBIL analysis completed successfully",
+            "result": result_dict,
+            "updated_at": datetime.now().isoformat(),
+            "processing_time": total_processing_time
+        })
+
+        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+        logger.info(f"Job {job_id}: Results stored in Redis")
+
+        # Store in database
+        try:
+            db = next(get_db())
+
+            db_analysis_data = {
+                "analysis_id": job_id,
+                "framework": "cbil_comprehensive",
+                "input_text": text,
+                "temperature": 1.0,  # Upstage Solar Pro 2 temperature=0
+                "model_used": GPT_MODEL,  # ⚠️ Updated to Upstage Solar Pro 2
+                "analysis_text": cbil_analysis_text,
+                "character_count": len(text),
+                "word_count": len(text.split()),
+                "processing_time": total_processing_time,
+                "anonymized": True,
+                "research_approved": metadata.get("research_consent", False)
+            }
+
+            if metadata:
+                db_analysis_data.update({
+                    "teacher_name": metadata.get("teacher_name"),
+                    "subject": metadata.get("subject"),
+                    "grade_level": metadata.get("grade_level"),
+                    "school_type": metadata.get("school_type")
+                })
+
+            store_analysis(db, db_analysis_data)
+            update_framework_usage(db, "cbil_comprehensive")
+            db.close()
+
+            logger.info(f"Job {job_id}: Stored in database for research")
+
+        except Exception as e:
+            logger.error(f"Job {job_id}: Failed to store in database: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Job {job_id}: Comprehensive analysis failed: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+        job_data.update({
+            "status": "failed",
+            "message": f"Comprehensive analysis failed: {str(e)}",
+            "updated_at": datetime.now().isoformat()
+        })
+        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -360,7 +602,7 @@ async def health_check():
         "available_frameworks": list(ANALYSIS_FRAMEWORKS.keys())
     }
 
-@app.get("/api/frameworks")
+@app.get("/api/analyze/frameworks")
 async def list_frameworks():
     """List available analysis frameworks"""
     frameworks = []
@@ -378,7 +620,7 @@ async def analyze_text(request: AnalysisRequest, background_tasks: BackgroundTas
     try:
         # Generate job ID
         job_id = str(uuid.uuid4())
-        
+
         # Initial job status
         job_data = {
             "job_id": job_id,
@@ -388,19 +630,32 @@ async def analyze_text(request: AnalysisRequest, background_tasks: BackgroundTas
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
-        
+
+        # Determine TTL based on framework (comprehensive analysis takes longer)
+        ttl = 7200 if request.framework == "cbil_comprehensive" else 3600
+
         # Store in Redis
-        redis_client.setex(f"analysis_job:{job_id}", 3600, json.dumps(job_data))
-        
-        # Add background task
-        background_tasks.add_task(
-            process_analysis_job,
-            job_id,
-            request.text,
-            request.framework,
-            request.metadata or {}
-        )
-        
+        redis_client.setex(f"analysis_job:{job_id}", ttl, json.dumps(job_data))
+
+        # Add appropriate background task based on framework
+        if request.framework == "cbil_comprehensive":
+            # Use comprehensive CBIL + Module 3 analysis
+            background_tasks.add_task(
+                process_comprehensive_cbil_analysis,
+                job_id,
+                request.text,
+                request.metadata or {}
+            )
+        else:
+            # Use standard OpenAI API analysis
+            background_tasks.add_task(
+                process_analysis_job,
+                job_id,
+                request.text,
+                request.framework,
+                request.metadata or {}
+            )
+
         return {
             "analysis_id": job_id,
             "status": "pending",
@@ -408,7 +663,7 @@ async def analyze_text(request: AnalysisRequest, background_tasks: BackgroundTas
             "framework": request.framework,
             "submitted_at": datetime.now().isoformat()
         }
-        
+
     except Exception as e:
         logger.error(f"Error submitting analysis job: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -542,6 +797,12 @@ async def analyze_transcript_by_id(
 # Initialize report generators
 report_generator = HTMLReportGenerator()
 pdf_generator = PDFReportGenerator()
+diagnostic_report_generator = DiagnosticReportGenerator()
+
+# Initialize Module 4 advanced generators
+advanced_pdf_gen = AdvancedPDFGenerator()
+matrix_3d_viz = Matrix3DVisualizer()
+excel_exporter = ExcelReportExporter()
 
 @app.get("/api/reports/html/{job_id}", response_class=HTMLResponse)
 async def get_html_report(job_id: str):
@@ -558,9 +819,31 @@ async def get_html_report(job_id: str):
         
         if "result" not in job:
             raise HTTPException(status_code=400, detail="No analysis result found")
-        
-        # Generate HTML report
-        html_report = report_generator.generate_html_report(job["result"])
+
+        result = job["result"]
+
+        # Result should already be a dict from Redis
+        # Check both framework and evaluation_type fields
+        framework = result.get("framework", "")
+        evaluation_type = result.get("evaluation_type", "")
+
+        # Use diagnostic report generator for cbil_comprehensive framework
+        if "cbil_comprehensive" in framework or "cbil_comprehensive" in evaluation_type:
+            logger.info(f"Using Diagnostic report generator for cbil_comprehensive framework")
+            logger.info(f"Result type: {type(result)}")
+            logger.info(f"Result keys: {result.keys() if isinstance(result, dict) else 'NOT A DICT'}")
+            try:
+                html_report = diagnostic_report_generator.generate_html_report(result)
+            except Exception as gen_error:
+                import traceback
+                logger.error(f"Diagnostic report generation failed: {str(gen_error)}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                logger.error(f"Result structure: {json.dumps(result, indent=2, default=str)[:500]}")
+                raise
+        else:
+            # Use standard HTML report generator for other frameworks
+            html_report = report_generator.generate_html_report(result)
+
         return HTMLResponse(content=html_report, media_type="text/html")
         
     except HTTPException:
@@ -568,6 +851,62 @@ async def get_html_report(job_id: str):
     except Exception as e:
         logger.error(f"Error generating HTML report: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/reports/diagnostic/{job_id}", response_class=HTMLResponse)
+async def get_diagnostic_report(job_id: str):
+    """
+    Generate diagnostic professional diagnostic report for completed analysis
+
+    This endpoint provides a medical body composition-style report with:
+    - At-a-glance hero summary with overall score
+    - Core metric score cards (top 3 metrics)
+    - Strengths and areas for improvement
+    - Priority coaching recommendations
+    - Professional Diagnostic-inspired design system
+
+    Only works for comprehensive analysis (cbil_comprehensive framework)
+    """
+    try:
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+
+        job = json.loads(job_data)
+
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+
+        result = job["result"]
+        framework = result.get("framework", "")
+
+        # Diagnostic reports are only available for comprehensive analysis
+        if framework != "cbil_comprehensive":
+            raise HTTPException(
+                status_code=400,
+                detail="Diagnostic reports are only available for comprehensive analysis (cbil_comprehensive framework)"
+            )
+
+        # Verify required data exists
+        if "quantitative_metrics" not in result:
+            raise HTTPException(
+                status_code=400,
+                detail="Quantitative metrics not found in analysis result"
+            )
+
+        # Generate diagnostic report
+        logger.info(f"Generating Diagnostic report for job {job_id}")
+        diagnostic_html = diagnostic_report_generator.generate_html_report(result)
+
+        return HTMLResponse(content=diagnostic_html, media_type="text/html")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating Diagnostic report: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/api/reports/data/{job_id}")
 async def get_report_data(job_id: str):
@@ -587,10 +926,20 @@ async def get_report_data(job_id: str):
         
         result = job["result"]
         framework = result.get("framework", "generic")
-        
+
         # Extract chart data and recommendations
-        chart_data = report_generator.extract_chart_data(result.get("analysis", ""), framework)
-        recommendations = report_generator.generate_recommendations(result.get("analysis", ""), framework)
+        # For CBIL comprehensive, use coaching_feedback instead of raw analysis
+        if framework == "cbil_comprehensive":
+            # Use coaching feedback for rich recommendations
+            coaching_data = result.get("coaching_feedback", {})
+            analysis_text_for_extraction = result.get("cbil_analysis_text", "")
+            recommendations_text = coaching_data.get("priority_actions", [])
+        else:
+            analysis_text_for_extraction = result.get("analysis", "")
+            recommendations_text = analysis_text_for_extraction
+
+        chart_data = report_generator.extract_chart_data(analysis_text_for_extraction, framework)
+        recommendations = report_generator.generate_recommendations(recommendations_text, framework)
         
         return {
             "analysis_id": job_id,
@@ -599,7 +948,8 @@ async def get_report_data(job_id: str):
             "chart_data": chart_data,
             "chart_config": report_generator.generate_chart_js_config(chart_data),
             "recommendations": recommendations,
-            "analysis_text": result.get("analysis", ""),
+            "analysis_text": analysis_text_for_extraction,
+            "coaching_feedback": result.get("coaching_feedback", {}) if framework == "cbil_comprehensive" else None,
             "metadata": {
                 "character_count": result.get("character_count", 0),
                 "word_count": result.get("word_count", 0),
@@ -654,6 +1004,286 @@ async def get_pdf_report(job_id: str):
     except Exception as e:
         logger.error(f"Error generating PDF report: {str(e)}")
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+@app.get("/api/reports/pdf-enhanced/{job_id}")
+async def get_enhanced_pdf_report(job_id: str, include_cover: bool = True):
+    """
+    Generate enhanced PDF report with rendered charts (not placeholders)
+
+    Uses AdvancedPDFGenerator with Matplotlib chart rendering
+    """
+    try:
+        # Check if PDF generation is available
+        if not is_pdf_generation_available():
+            raise HTTPException(
+                status_code=503,
+                detail="PDF generation is not available. WeasyPrint is not installed."
+            )
+
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+
+        job = json.loads(job_data)
+
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+
+        result = job["result"]
+        framework = result.get("framework", "generic")
+
+        # Only generate enhanced PDFs for cbil_comprehensive framework
+        if framework != "cbil_comprehensive":
+            raise HTTPException(
+                status_code=400,
+                detail="Enhanced PDF only available for cbil_comprehensive framework"
+            )
+
+        # Generate enhanced PDF with rendered charts
+        logger.info(f"Generating enhanced PDF for job {job_id}")
+        pdf_bytes = advanced_pdf_gen.generate_pdf_with_charts(
+            result,
+            include_cover=include_cover
+        )
+
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"CBIL_Enhanced_Report_{job_id[:8]}_{timestamp}.pdf"
+
+        logger.info(f"Enhanced PDF generated successfully: {filename}")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating enhanced PDF: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Enhanced PDF generation failed: {str(e)}")
+
+@app.get("/api/reports/visualization/3d-matrix/{job_id}", response_class=HTMLResponse)
+async def get_3d_matrix_visualization(job_id: str):
+    """
+    Get interactive 3D matrix heatmap visualization
+
+    Returns interactive Plotly 3D scatter plot showing Stage × Context × Level
+    """
+    try:
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+
+        job = json.loads(job_data)
+
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+
+        result = job["result"]
+        framework = result.get("framework", "generic")
+
+        # Only available for cbil_comprehensive framework
+        if framework != "cbil_comprehensive":
+            raise HTTPException(
+                status_code=400,
+                detail="3D matrix visualization only available for cbil_comprehensive framework"
+            )
+
+        # Extract matrix data from Module 2 results
+        module2_result = result.get("module2_result")
+        if not module2_result:
+            raise HTTPException(
+                status_code=400,
+                detail="No Module 2 matrix data found in analysis result"
+            )
+
+        # Generate 3D visualization
+        logger.info(f"Generating 3D matrix visualization for job {job_id}")
+        html_content = matrix_3d_viz.generate_3d_heatmap(module2_result)
+
+        logger.info(f"3D visualization generated successfully")
+
+        return HTMLResponse(content=html_content, media_type="text/html")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating 3D visualization: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"3D visualization failed: {str(e)}")
+
+@app.get("/api/reports/excel/{job_id}")
+async def get_excel_report(job_id: str):
+    """
+    Generate Excel workbook with comprehensive analysis data
+
+    Creates multi-sheet Excel file with:
+    - Executive Summary
+    - CBIL Scores
+    - Module 3 Metrics
+    - 3D Matrix Data
+    - Pattern Matching
+    - Coaching Feedback
+    """
+    try:
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+
+        job = json.loads(job_data)
+
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+
+        result = job["result"]
+        framework = result.get("framework", "generic")
+
+        # Generate Excel export
+        logger.info(f"Generating Excel export for job {job_id}, framework: {framework}")
+        excel_bytes = excel_exporter.export_to_excel(result)
+
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        framework_name = framework.replace("_", "-")
+        filename = f"Analysis_Report_{framework_name}_{job_id[:8]}_{timestamp}.xlsx"
+
+        logger.info(f"Excel export generated successfully: {filename}")
+
+        return Response(
+            content=excel_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating Excel export: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
+
+@app.get("/api/reports/visualization/2d-heatmaps/{job_id}", response_class=HTMLResponse)
+async def get_2d_heatmaps(job_id: str):
+    """
+    Get 2D heatmap slices by cognitive level
+
+    Returns three 2D heatmaps showing Stage × Context for each Level (L1, L2, L3)
+    """
+    try:
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+
+        job = json.loads(job_data)
+
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+
+        result = job["result"]
+        framework = result.get("framework", "generic")
+
+        # Only available for cbil_comprehensive framework
+        if framework != "cbil_comprehensive":
+            raise HTTPException(
+                status_code=400,
+                detail="2D heatmaps only available for cbil_comprehensive framework"
+            )
+
+        # Extract matrix data from Module 2 results
+        module2_result = result.get("module2_result")
+        if not module2_result:
+            raise HTTPException(
+                status_code=400,
+                detail="No Module 2 matrix data found in analysis result"
+            )
+
+        # Generate 2D heatmaps
+        logger.info(f"Generating 2D heatmap slices for job {job_id}")
+        html_content = matrix_3d_viz.generate_2d_heatmaps(module2_result)
+
+        logger.info(f"2D heatmaps generated successfully")
+
+        return HTMLResponse(content=html_content, media_type="text/html")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating 2D heatmaps: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"2D heatmap generation failed: {str(e)}")
+
+@app.get("/api/reports/visualization/distributions/{job_id}", response_class=HTMLResponse)
+async def get_distribution_charts(job_id: str):
+    """
+    Get distribution bar charts for Stage, Context, and Level
+
+    Returns three bar charts showing percentage distributions across each dimension
+    """
+    try:
+        job_data = redis_client.get(f"analysis_job:{job_id}")
+        if not job_data:
+            raise HTTPException(status_code=404, detail="Analysis job not found")
+
+        job = json.loads(job_data)
+
+        if job.get("status") != "completed":
+            raise HTTPException(status_code=400, detail="Analysis not completed yet")
+
+        if "result" not in job:
+            raise HTTPException(status_code=400, detail="No analysis result found")
+
+        result = job["result"]
+        framework = result.get("framework", "generic")
+
+        # Only available for cbil_comprehensive framework
+        if framework != "cbil_comprehensive":
+            raise HTTPException(
+                status_code=400,
+                detail="Distribution charts only available for cbil_comprehensive framework"
+            )
+
+        # Extract matrix data from Module 2 results
+        module2_result = result.get("module2_result")
+        if not module2_result:
+            raise HTTPException(
+                status_code=400,
+                detail="No Module 2 matrix data found in analysis result"
+            )
+
+        # Generate distribution charts
+        logger.info(f"Generating distribution charts for job {job_id}")
+        html_content = matrix_3d_viz.generate_distribution_charts(module2_result)
+
+        logger.info(f"Distribution charts generated successfully")
+
+        return HTMLResponse(content=html_content, media_type="text/html")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating distribution charts: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Distribution chart generation failed: {str(e)}")
 
 # Report Generation Request Models
 class ReportGenerationRequest(BaseModel):

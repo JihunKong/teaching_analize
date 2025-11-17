@@ -359,91 +359,40 @@ class SeleniumYouTubeScraper:
         return False
 
     def find_more_actions_button(self) -> any:
-        """더보기 버튼 찾기 - 사용자 제공 정보 기반 개선"""
-        more_button_selectors = [
-            # 사용자가 확인한 정확한 셀렉터
-            "tp-yt-paper-button#expand",
-            "tp-yt-paper-button[id='expand']",
-            "#expand.button.style-scope.ytd-text-inline-expander",
-            "tp-yt-paper-button.button.style-scope.ytd-text-inline-expander",
-            
-            # 더보기 텍스트로 찾기
-            "tp-yt-paper-button:contains('더보기')",
-            "tp-yt-paper-button:contains('...더보기')",
-            "button:contains('더보기')",
-            "button:contains('...더보기')",
-            
-            # 기존 더보기 버튼 패턴들
-            "button[aria-label*='더보기']",
-            "button[aria-label*='More actions']", 
-            "button[aria-label*='Show more']",
-            "#menu button",
-            "ytd-menu-renderer button",
-            
-            # 새로운 YouTube UI 패턴
-            "button.yt-spec-button-shape-next[aria-label*='More']",
-            "yt-button-shape button[aria-label*='More']",
-            "#top-level-buttons #menu button",
-            ".ytd-menu-renderer button",
-            
-            # 비디오 플레이어 내부 버튼들
-            ".ytp-right-controls button",
-            "button[title*='More']",
-            "button[title*='더보기']"
-        ]
-        
-        for selector in more_button_selectors:
-            try:
-                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                for element in elements:
-                    if element.is_displayed() and element.is_enabled():
-                        # 버튼의 위치가 화면 내에 있는지 확인
-                        location = element.location
-                        if location['x'] >= 0 and location['y'] >= 0:
-                            # 텍스트 내용도 확인
-                            button_text = element.text.strip().lower()
-                            if '더보기' in button_text or 'more' in button_text or selector.startswith('tp-yt-paper-button'):
-                                logger.info(f"✅ Found more button with selector: {selector}, text: '{element.text}'")
-                                return element
-                            elif not button_text:  # 텍스트가 없는 경우도 시도
-                                logger.info(f"✅ Found more button with selector: {selector} (no text)")
-                                return element
-            except Exception as e:
-                logger.debug(f"Selector {selector} failed: {e}")
-                continue
-        
-        # 텍스트 기반으로 추가 검색
+        """더보기 버튼 찾기 - 사용자 제공 정확한 selector 사용"""
+        # 사용자가 확인한 정확한 selector (youtube_html_scraper.py의 검증된 방식)
+        expand_button_selector = "tp-yt-paper-button#expand.button.style-scope.ytd-text-inline-expander"
+
         try:
-            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
-            for button in all_buttons:
-                try:
-                    if button.is_displayed() and button.is_enabled():
-                        button_text = button.text.strip()
-                        if '더보기' in button_text or '...더보기' in button_text:
-                            logger.info(f"✅ Found more button by text: '{button_text}'")
-                            return button
-                except:
-                    continue
+            # Wait for element to be present
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, expand_button_selector))
+            )
+
+            # Find all matching elements and click the visible one
+            expand_buttons = self.driver.find_elements(By.CSS_SELECTOR, expand_button_selector)
+            logger.info(f"Found {len(expand_buttons)} expand button(s)")
+
+            expand_button = None
+            for btn in expand_buttons:
+                if btn.is_displayed() and btn.is_enabled():
+                    expand_button = btn
+                    logger.info("Found visible expand button")
+                    break
+
+            if not expand_button:
+                logger.error("No visible expand button found")
+                return None
+
+            logger.info("✅ Found expand button with user-provided selector")
+            return expand_button
+
+        except TimeoutException:
+            logger.error("설명 확장 버튼을 찾을 수 없습니다 (timeout)")
+            return None
         except Exception as e:
-            logger.debug(f"Text-based search failed: {e}")
-        
-        # tp-yt-paper-button 요소들 전체 검색
-        try:
-            paper_buttons = self.driver.find_elements(By.TAG_NAME, "tp-yt-paper-button")
-            for button in paper_buttons:
-                try:
-                    if button.is_displayed() and button.is_enabled():
-                        button_text = button.text.strip()
-                        button_id = button.get_attribute('id') or ''
-                        if '더보기' in button_text or 'expand' in button_id.lower():
-                            logger.info(f"✅ Found tp-yt-paper-button: id='{button_id}', text='{button_text}'")
-                            return button
-                except:
-                    continue
-        except Exception as e:
-            logger.debug(f"tp-yt-paper-button search failed: {e}")
-        
-        return None
+            logger.error(f"Expand button search failed: {e}")
+            return None
 
     def ensure_menu_is_open(self) -> bool:
         """메뉴가 열려있는지 확인하고 열기"""
@@ -592,11 +541,10 @@ class SeleniumYouTubeScraper:
                 logger.warning("⚠️ Could not find transcript container for scrolling")
                 return True  # 스크롤 없이 계속 진행
             
-            # 세그먼트 셀렉터들
+            # 세그먼트 셀렉터 - 사용자 제공 정확한 selector
             segment_selectors = [
-                "ytd-transcript-segment-renderer",
-                ".ytd-transcript-segment-renderer",
-                "[class*='transcript-segment']"
+                "div.segment.ytd-transcript-segment-renderer",  # 사용자 확인 정확한 selector
+                "div.segment"  # Fallback
             ]
             
             last_count = 0
@@ -749,15 +697,13 @@ class SeleniumYouTubeScraper:
                     if i % 50 == 0:
                         logger.info(f"📝 Processing segment {i+1}/{len(segments)}")
                     
-                    # 타임스탬프 추출 - 다양한 방법
+                    # 타임스탬프 추출 - 사용자 제공 정확한 selector
                     timestamp = None
                     timestamp_selectors = [
-                        ".ytd-transcript-segment-renderer",
-                        "[data-start-ms]",
-                        ".timestamp",
-                        "[class*='time']"
+                        "div.segment-timestamp",  # 사용자 확인 정확한 selector
+                        ".segment-start-offset .segment-timestamp"  # Nested fallback
                     ]
-                    
+
                     for ts_selector in timestamp_selectors:
                         try:
                             timestamp_element = segment.find_element(By.CSS_SELECTOR, ts_selector)
@@ -788,21 +734,18 @@ class SeleniumYouTubeScraper:
                         except NoSuchElementException:
                             continue
                     
-                    # 텍스트 추출 - 다양한 방법
+                    # 텍스트 추출 - 사용자 제공 정확한 selector
                     text = None
                     text_selectors = [
-                        "yt-formatted-string",
-                        ".segment-text",
-                        "[class*='text']",
-                        "span",
-                        "div"
+                        "yt-formatted-string.segment-text",  # 사용자 확인 정확한 selector
+                        ".segment-text"  # Fallback
                     ]
-                    
+
                     for text_selector in text_selectors:
                         try:
                             text_element = segment.find_element(By.CSS_SELECTOR, text_selector)
                             text = text_element.text.strip()
-                            if text and len(text) > 5:  # 의미있는 텍스트만
+                            if text:  # 텍스트가 있으면 즉시 사용
                                 break
                         except NoSuchElementException:
                             continue
