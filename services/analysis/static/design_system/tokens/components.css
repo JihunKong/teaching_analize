@@ -1,0 +1,131 @@
+/**
+ * TVAS Design System - Component Tokens
+ *
+ * Semantic tokens for specific components.
+ * These tokens reference the core design tokens and provide
+ * context-specific naming for better maintainability.
+ */
+
+:root {
+  /* ============ Card Backgrounds ============ */
+
+  /* Primary card background - clean white */
+  --card-bg-primary: var(--color-white, #FFFFFF);
+
+  /* Secondary card background - subtle gray */
+  --card-bg-secondary: var(--gray-50, #F9FAFB);
+
+  /* Tertiary card background - light gray for nested content */
+  --card-bg-tertiary: var(--gray-100, #F3F4F6);
+
+  /* Chart container background - slightly off-white */
+  --card-bg-chart: #F8F9FA;
+
+  /* InBody medical styling - pure white */
+  --card-bg-inbody: var(--inbody-white, #FFFFFF);
+
+  /* ============ Card Spacing ============ */
+
+  /* Default card padding - 16px */
+  --card-padding-default: var(--space-4);
+
+  /* Compact card padding - 12px */
+  --card-padding-compact: var(--space-3);
+
+  /* Spacious card padding - 20px */
+  --card-padding-spacious: var(--space-5);
+
+  /* Default card margin - 16px vertical */
+  --card-margin-default: var(--space-4) 0;
+
+  /* Compact card margin - 12px vertical */
+  --card-margin-compact: var(--space-3) 0;
+
+  /* ============ Card Appearance ============ */
+
+  /* Default card border radius - 8px */
+  --card-radius-default: var(--radius-lg);
+
+  /* Default card shadow - medium depth */
+  --card-shadow-default: var(--shadow-md);
+
+  /* Card border color */
+  --card-border-color: var(--gray-200, #E5E7EB);
+
+  /* ============ Button Spacing ============ */
+
+  /* Small button padding */
+  --button-padding-sm: 10px 20px;
+
+  /* Medium button padding (default) */
+  --button-padding-md: 14px 28px;
+
+  /* Large button padding */
+  --button-padding-lg: 16px 32px;
+
+  /* ============ Loading States ============ */
+
+  /* Skeleton loader background */
+  --loading-skeleton-bg: var(--gray-200, #E5E7EB);
+
+  /* Skeleton loader shimmer effect */
+  --loading-skeleton-shimmer: var(--gray-300, #D1D5DB);
+
+  /* ============ Border Colors ============ */
+
+  /* Default border color */
+  --border-primary: var(--gray-300, #D1D5DB);
+
+  /* Print border color - darker for visibility */
+  --border-print-color: var(--gray-400, #9CA3AF);
+
+  /* ============ Text Colors ============ */
+
+  /* Primary text color */
+  --text-primary: var(--gray-900, #111827);
+
+  /* Secondary text color - less emphasis */
+  --text-secondary: var(--gray-700, #374151);
+
+  /* Tertiary text color - subtle */
+  --text-tertiary: var(--gray-600, #4B5563);
+
+  /* ============ Background Colors ============ */
+
+  /* Primary background */
+  --bg-primary: var(--color-white, #FFFFFF);
+
+  /* Secondary background */
+  --bg-secondary: var(--gray-50, #F9FAFB);
+
+  /* ============ Status Color Borders ============ */
+
+  /* Excellent status border */
+  --status-excellent-border: #059669;
+
+  /* Good status border */
+  --status-good-border: #2563EB;
+
+  /* Adequate status border */
+  --status-adequate-border: #D97706;
+
+  /* Poor status border */
+  --status-poor-border: #DC2626;
+
+  /* ============ Print Overrides ============ */
+
+  /* Reduced spacing for print */
+  --space-print-card: 6px;
+  --space-print-gap: 4px;
+}
+
+/* Adjust component tokens for print */
+@media print {
+  :root {
+    --card-padding-default: var(--space-2);
+    --card-padding-compact: var(--space-1);
+    --card-padding-spacious: var(--space-3);
+    --card-margin-default: var(--space-print-card) 0;
+    --card-shadow-default: none;
+  }
+}
