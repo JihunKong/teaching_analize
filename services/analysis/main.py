@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, validator
 import redis
 import json
@@ -102,6 +103,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for design system CSS
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    logger.info(f"✓ Static files mounted: {static_dir}")
+else:
+    logger.warning(f"⚠️  Static directory not found: {static_dir}")
 
 # Redis connection
 redis_client = redis.Redis(
