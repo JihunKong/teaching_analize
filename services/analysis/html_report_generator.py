@@ -892,7 +892,7 @@ class HTMLReportGenerator:
             font-family: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
             line-height: 1.7;
             color: #333;
-            max-width: 1200px;
+            max-width: 950px;
             margin: 0 auto;
             padding: 20px;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -909,7 +909,7 @@ class HTMLReportGenerator:
         .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 40px;
+            padding: 30px;
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -960,7 +960,7 @@ class HTMLReportGenerator:
         }}
         
         .section {{
-            padding: 35px;
+            padding: 24px;
             margin-bottom: 0;
             border-bottom: 1px solid #f0f0f0;
         }}
@@ -1164,7 +1164,7 @@ class HTMLReportGenerator:
         
         .footer {{
             text-align: center;
-            padding: 40px;
+            padding: 30px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             font-size: 14px;
@@ -1457,7 +1457,7 @@ class HTMLReportGenerator:
             font-family: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 1000px;
+            max-width: 850px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f8f9fa;

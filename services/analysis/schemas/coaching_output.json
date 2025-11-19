@@ -21,22 +21,48 @@
       "minItems": 2,
       "maxItems": 6,
       "items": {
-        "type": "string",
-        "minLength": 20,
-        "maxLength": 300
+        "type": "object",
+        "required": ["point", "detail"],
+        "properties": {
+          "point": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100,
+            "description": "핵심 강점 요약 (1줄)"
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 30,
+            "maxLength": 300,
+            "description": "구체적 설명과 근거"
+          }
+        }
       },
-      "description": "List of specific strengths observed in the teaching"
+      "description": "List of specific strengths observed in the teaching with details"
     },
     "areas_for_growth": {
       "type": "array",
       "minItems": 2,
       "maxItems": 6,
       "items": {
-        "type": "string",
-        "minLength": 20,
-        "maxLength": 300
+        "type": "object",
+        "required": ["point", "detail"],
+        "properties": {
+          "point": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100,
+            "description": "개선 영역 요약 (1줄)"
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 30,
+            "maxLength": 300,
+            "description": "구체적 개선 방안과 근거"
+          }
+        }
       },
-      "description": "List of specific areas for improvement"
+      "description": "List of specific areas for improvement with details"
     },
     "priority_actions": {
       "type": "array",

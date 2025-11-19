@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 class CoachingFeedback:
     """Structured coaching feedback"""
     overall_assessment: str
-    strengths: List[str]
-    areas_for_growth: List[str]
+    strengths: List[Dict[str, str]]  # Changed: Now accepts [{"point": "...", "detail": "..."}]
+    areas_for_growth: List[Dict[str, str]]  # Changed: Now accepts [{"point": "...", "detail": "..."}]
     priority_actions: List[str]
     pedagogical_recommendations: Optional[Dict[str, str]] = None
     resources_and_strategies: Optional[List[str]] = None
@@ -31,6 +31,77 @@ class CoachingFeedback:
 
 class CoachingGenerator:
     """Generates personalized coaching feedback for teachers"""
+
+    # Metric name translations (technical → Korean)
+    METRIC_TRANSLATIONS = {
+        # Time distribution metrics
+        'intro_time_ratio': '도입 시간 비율',
+        'development_time_ratio': '전개 시간 비율',
+        'closing_time_ratio': '정리 시간 비율',
+        'stage_balance': '단계별 균형',
+
+        # Context/function metrics
+        'context_diversity': '맥락 다양성',
+        'explanation_ratio': '설명 비율',
+        'question_ratio': '질문 비율',
+        'feedback_ratio': '피드백 비율',
+        'facilitation_ratio': '촉진 비율',
+        'management_ratio': '관리 비율',
+
+        # Cognitive level metrics
+        'avg_cognitive_level': '평균 인지 수준',
+        'cognitive_diversity': '인지 다양성',
+        'higher_order_ratio': '고차원적 사고 비율',
+        'cognitive_progression': '인지적 진행도',
+        'l1_ratio': 'L1 수준 비율',
+        'l2_ratio': 'L2 수준 비율',
+        'l3_ratio': 'L3 수준 비율',
+
+        # Interaction metrics
+        'utterance_density': '발화 밀도',
+        'avg_utterance_length': '평균 발화 길이',
+        'avg_wait_time': '평균 대기 시간',
+        'interaction_rate': '상호작용 빈도',
+
+        # Pattern matching
+        'pattern_alignment': '패턴 일치도',
+        'direct_instruction_match': '직접 교수법 일치도',
+        'inquiry_based_match': '탐구 기반 일치도',
+        'collaborative_match': '협력 학습 일치도',
+
+        # CBIL metrics
+        'cbil_alignment': 'CBIL 정렬도',
+        'cbil_stage_coverage': 'CBIL 단계 포함률',
+
+        # Quality metrics
+        'question_quality': '질문 품질',
+        'feedback_quality': '피드백 품질',
+        'explanation_clarity': '설명 명확성'
+    }
+
+    # Metric units (for proper display)
+    METRIC_UNITS = {
+        'utterance_density': '회/분',
+        'avg_utterance_length': '단어',
+        'avg_wait_time': '초',
+        'avg_cognitive_level': '점',
+        'intro_time_ratio': '%',
+        'development_time_ratio': '%',
+        'closing_time_ratio': '%',
+        'question_ratio': '%',
+        'feedback_ratio': '%',
+        'explanation_ratio': '%',
+        'facilitation_ratio': '%',
+        'management_ratio': '%',
+        'higher_order_ratio': '%',
+        'l1_ratio': '%',
+        'l2_ratio': '%',
+        'l3_ratio': '%',
+        'pattern_alignment': '%',
+        'direct_instruction_match': '%',
+        'inquiry_based_match': '%',
+        'collaborative_match': '%'
+    }
 
     def __init__(
         self,
@@ -141,13 +212,35 @@ class CoachingGenerator:
 
         total_utterances = stats.get('total_utterances', 0)
 
-        # Build key metrics summary
+        # Build key metrics summary with Korean translations
         key_metrics_list = []
         for metric_name, metric_result in metrics_data.items():
+            # Get Korean translation or fallback to original name
+            korean_name = self.METRIC_TRANSLATIONS.get(metric_name, metric_name)
+
+            # Get unit if available
+            unit = self.METRIC_UNITS.get(metric_name, '')
+
+            # Format value with unit
+            if unit == '%':
+                value_str = f"{metric_result.value * 100:.1f}%"
+            elif unit:
+                value_str = f"{metric_result.value:.2f}{unit}"
+            else:
+                value_str = f"{metric_result.value:.2f}"
+
+            # Format status in Korean
+            status_korean = {
+                'optimal': '최적',
+                'good': '양호',
+                'needs_improvement': '개선 필요',
+                'critical': '주의 필요'
+            }.get(metric_result.status, metric_result.status)
+
             key_metrics_list.append(
-                f"  - {metric_name}: {metric_result.value:.2f} "
-                f"(Score: {metric_result.normalized_score:.1f}/100, "
-                f"Status: {metric_result.status})"
+                f"  - {korean_name}: {value_str} "
+                f"(점수: {metric_result.normalized_score:.1f}/100, "
+                f"상태: {status_korean})"
             )
         key_metrics_str = "\n".join(key_metrics_list)
 
@@ -209,6 +302,64 @@ class CoachingGenerator:
             logger.error(f"Coaching output validation failed: {e}")
             raise
 
+    def _sanitize_coaching_output(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Remove English metric names from coaching output as safety measure
+
+        Removes patterns like (utterance_density: 99.1/100) or (question_ratio: 0.25)
+        from all text fields to ensure clean Korean-only output.
+
+        Args:
+            data: Coaching feedback data
+
+        Returns:
+            Sanitized coaching feedback data
+        """
+        import re
+
+        # Pattern to match English metric names with optional scores
+        # Matches: (metric_name: value) or (metric_name: value/100)
+        metric_pattern = r'\s*\([a-z_]+(?:_[a-z]+)*:\s*[\d.]+(?:/100)?\)'
+
+        def clean_text(text: str) -> str:
+            """Remove metric patterns and clean up spacing"""
+            if not text:
+                return text
+            # Remove metric patterns
+            cleaned = re.sub(metric_pattern, '', text)
+            # Clean up multiple spaces
+            cleaned = re.sub(r'\s+', ' ', cleaned)
+            return cleaned.strip()
+
+        # Clean strengths
+        if 'strengths' in data and isinstance(data['strengths'], list):
+            for item in data['strengths']:
+                if isinstance(item, dict):
+                    if 'point' in item:
+                        item['point'] = clean_text(item['point'])
+                    if 'detail' in item:
+                        item['detail'] = clean_text(item['detail'])
+
+        # Clean areas_for_growth
+        if 'areas_for_growth' in data and isinstance(data['areas_for_growth'], list):
+            for item in data['areas_for_growth']:
+                if isinstance(item, dict):
+                    if 'point' in item:
+                        item['point'] = clean_text(item['point'])
+                    if 'detail' in item:
+                        item['detail'] = clean_text(item['detail'])
+
+        # Clean priority_actions (if they contain metric names)
+        if 'priority_actions' in data and isinstance(data['priority_actions'], list):
+            data['priority_actions'] = [clean_text(action) for action in data['priority_actions']]
+
+        # Clean overall_assessment
+        if 'overall_assessment' in data:
+            data['overall_assessment'] = clean_text(data['overall_assessment'])
+
+        logger.info("Coaching output sanitized - removed any English metric names")
+        return data
+
     async def generate_coaching(
         self,
         matrix_data: Dict[str, Any],
@@ -269,6 +420,9 @@ class CoachingGenerator:
 
                 # Validate against schema
                 self._validate_coaching_output(coaching_data)
+
+                # Sanitize output (remove English metric names as safety measure)
+                coaching_data = self._sanitize_coaching_output(coaching_data)
 
                 # Create CoachingFeedback object
                 feedback = CoachingFeedback(
@@ -338,12 +492,20 @@ class CoachingGenerator:
 
         md += f"## Strengths\n\n"
         for i, strength in enumerate(feedback.strengths, 1):
-            md += f"{i}. {strength}\n"
+            if isinstance(strength, dict):
+                md += f"{i}. **{strength['point']}**\n   {strength['detail']}\n"
+            else:
+                # Fallback for old string format
+                md += f"{i}. {strength}\n"
         md += "\n"
 
         md += f"## Areas for Growth\n\n"
         for i, area in enumerate(feedback.areas_for_growth, 1):
-            md += f"{i}. {area}\n"
+            if isinstance(area, dict):
+                md += f"{i}. **{area['point']}**\n   {area['detail']}\n"
+            else:
+                # Fallback for old string format
+                md += f"{i}. {area}\n"
         md += "\n"
 
         md += f"## Priority Actions\n\n"
@@ -451,6 +613,9 @@ class CoachingGenerator:
 
                 # Validate
                 self._validate_coaching_output(coaching_data)
+
+                # Sanitize output (remove English metric names as safety measure)
+                coaching_data = self._sanitize_coaching_output(coaching_data)
 
                 # Add CBIL-specific fields if present
                 if 'cbil_insights' in coaching_data:

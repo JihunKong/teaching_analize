@@ -44,19 +44,50 @@ templates:
 
       ## Instructions
 
+      **CRITICAL OUTPUT REQUIREMENTS**:
+      1. ALL text must be 100% pure Korean - NO English technical terms allowed
+      2. NEVER include English metric names (utterance_density, cognitive_progression, question_ratio, etc.) in ANY output text
+      3. Use ONLY Korean metric names: "발화 밀도", "인지적 진행도", "질문 비율", etc.
+      4. BOTH 'point' and 'detail' fields MUST be populated (never leave empty)
+      5. Keep descriptions clean and focused - avoid redundant metric references
+
+      **Output Format Examples**:
+
+      ✅ CORRECT:
+      {{
+        "point": "효율적인 정보 전달",
+        "detail": "높은 발화 밀도(분당 2.96회)로 수업 시간을 효과적으로 활용하여 학습 내용 전달이 충분했습니다."
+      }}
+
+      ❌ WRONG:
+      {{
+        "point": "효율적인 정보 전달(utterance_density: 99.1/100)",  // English metric name forbidden!
+        "detail": ""  // Must not be empty!
+      }}
+
       Provide structured coaching feedback in the following JSON format:
 
       {{
         "overall_assessment": "Brief 2-3 sentence summary of the session's effectiveness",
         "strengths": [
-          "Specific strength 1 with data reference",
-          "Specific strength 2 with data reference",
-          "..."
+          {{
+            "point": "핵심 강점 (1줄 요약)",
+            "detail": "구체적인 설명과 근거 (수치 포함, 2-3문장)"
+          }},
+          {{
+            "point": "핵심 강점 (1줄 요약)",
+            "detail": "구체적인 설명과 근거 (수치 포함, 2-3문장)"
+          }}
         ],
         "areas_for_growth": [
-          "Specific area 1 with improvement suggestion",
-          "Specific area 2 with improvement suggestion",
-          "..."
+          {{
+            "point": "개선이 필요한 영역 (1줄 요약)",
+            "detail": "구체적인 개선 방안과 근거 (수치 포함, 2-3문장)"
+          }},
+          {{
+            "point": "개선이 필요한 영역 (1줄 요약)",
+            "detail": "구체적인 개선 방안과 근거 (수치 포함, 2-3문장)"
+          }}
         ],
         "priority_actions": [
           "Actionable step 1",

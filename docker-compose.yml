@@ -189,12 +189,12 @@ services:
     container_name: tvas_frontend
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost/api
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+    # volumes:
+      # - ./frontend:/app
+      # - /app/node_modules
+      # - /app/.next
     ports:
-      - "3000:80"
+      - "3000:3000"
     depends_on:
       - gateway
     networks:

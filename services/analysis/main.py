@@ -46,6 +46,48 @@ from utils.semantic_cache import SemanticCache
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Helper function to query analysis from database
+def get_analysis_from_database(job_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve analysis result from PostgreSQL database by job_id.
+    Used as fallback when Redis cache expires.
+
+    Returns:
+        Dict with analysis result in the same format as Redis, or None if not found
+    """
+    try:
+        db = next(get_db())
+        analysis_record = db.query(AnalysisResultDB).filter(
+            AnalysisResultDB.uuid == job_id
+        ).first()
+
+        if not analysis_record:
+            logger.info(f"Analysis {job_id} not found in database")
+            db.close()
+            return None
+
+        # Reconstruct result format matching Redis structure
+        result = {
+            "framework": analysis_record.framework,
+            "evaluation_type": analysis_record.framework,
+            "analysis_text": analysis_record.results.get("analysis_text", ""),
+            "structured_results": analysis_record.results.get("structured_results"),
+            "scores": analysis_record.results.get("scores"),
+            "recommendations": analysis_record.results.get("recommendations"),
+            "overall_score": analysis_record.overall_score,
+            "primary_level": analysis_record.primary_level,
+            "processing_time": analysis_record.processing_time_seconds,
+            "metadata": analysis_record.analysis_metadata or {}
+        }
+
+        db.close()
+        logger.info(f"Successfully retrieved analysis {job_id} from database (Redis fallback)")
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve analysis {job_id} from database: {str(e)}")
+        return None
+
 app = FastAPI(
     title="AIBOA Analysis Service",
     description="Multiple framework analysis for educational discourse",
@@ -348,7 +390,7 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
-        redis_client.setex(f"analysis_job:{job_id}", 3600, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
         
         # Get framework configuration
         if framework not in ANALYSIS_FRAMEWORKS:
@@ -422,7 +464,7 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
             "updated_at": datetime.now().isoformat()
         })
         
-        redis_client.setex(f"analysis_job:{job_id}", 3600, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
         
     except Exception as e:
         logger.error(f"Analysis job {job_id} failed: {str(e)}")
@@ -431,7 +473,7 @@ def process_analysis_job(job_id: str, text: str, framework: str, metadata: Dict[
             "message": f"Analysis failed: {str(e)}",
             "updated_at": datetime.now().isoformat()
         })
-        redis_client.setex(f"analysis_job:{job_id}", 3600, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
 
 async def process_comprehensive_cbil_analysis(
     job_id: str,
@@ -456,7 +498,7 @@ async def process_comprehensive_cbil_analysis(
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
-        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
 
         # Step 1: Call OpenAI API for CBIL analysis
         logger.info(f"Job {job_id}: Starting CBIL analysis")
@@ -471,7 +513,7 @@ async def process_comprehensive_cbil_analysis(
 
         # Step 2: Parse utterances from transcript
         job_data["message"] = "Step 2/3: Parsing utterances and building 3D matrix..."
-        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
 
         # Simple utterance parsing (split by sentences for now)
         # In production, this should use proper speaker diarization from Module 1
@@ -490,7 +532,7 @@ async def process_comprehensive_cbil_analysis(
 
         # Step 3: Run Module 3 evaluation with CBIL integration
         job_data["message"] = "Step 3/3: Running Module 3 evaluation with CBIL integration..."
-        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
 
         # Initialize EvaluationService with semantic cache for consistency
         evaluation_service = EvaluationService(semantic_cache=semantic_cache)
@@ -542,7 +584,7 @@ async def process_comprehensive_cbil_analysis(
             "processing_time": total_processing_time
         })
 
-        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
         logger.info(f"Job {job_id}: Results stored in Redis")
 
         # Store in database
@@ -590,7 +632,7 @@ async def process_comprehensive_cbil_analysis(
             "message": f"Comprehensive analysis failed: {str(e)}",
             "updated_at": datetime.now().isoformat()
         })
-        redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
+        redis_client.setex(f"analysis_job:{job_id}", 604800, json.dumps(job_data))  # 7 days TTL
 
 @app.get("/health")
 async def health_check():
@@ -806,21 +848,35 @@ excel_exporter = ExcelReportExporter()
 
 @app.get("/api/reports/html/{job_id}", response_class=HTMLResponse)
 async def get_html_report(job_id: str):
-    """Generate HTML report for completed analysis"""
+    """Generate HTML report for completed analysis with Redis → Database fallback"""
     try:
+        # Try Redis first (fast path)
         job_data = redis_client.get(f"analysis_job:{job_id}")
-        if not job_data:
-            raise HTTPException(status_code=404, detail="Analysis job not found")
-        
-        job = json.loads(job_data)
-        
-        if job.get("status") != "completed":
-            raise HTTPException(status_code=400, detail="Analysis not completed yet")
-        
-        if "result" not in job:
-            raise HTTPException(status_code=400, detail="No analysis result found")
 
-        result = job["result"]
+        if job_data:
+            # Found in Redis - use cached data
+            job = json.loads(job_data)
+
+            if job.get("status") != "completed":
+                raise HTTPException(status_code=400, detail="Analysis not completed yet")
+
+            if "result" not in job:
+                raise HTTPException(status_code=400, detail="No analysis result found")
+
+            result = job["result"]
+            logger.info(f"Retrieved analysis {job_id} from Redis cache")
+        else:
+            # Not in Redis - try database fallback
+            logger.info(f"Analysis {job_id} not in Redis, checking database...")
+            result = get_analysis_from_database(job_id)
+
+            if not result:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Analysis job {job_id} not found in cache or database"
+                )
+
+            logger.info(f"Using database fallback for analysis {job_id}")
 
         # Result should already be a dict from Redis
         # Check both framework and evaluation_type fields

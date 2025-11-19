@@ -8,6 +8,9 @@ import {
   ComprehensiveReportViewer
 } from '../../components/comprehensive'
 
+// Force dynamic rendering to use useSearchParams
+export const dynamic = 'force-dynamic'
+
 interface Analysis {
   analysis_id: string
   framework: string
@@ -131,9 +134,8 @@ export default function ComprehensiveReportsPage() {
                 created_at: analysisData.created_at || new Date().toISOString(),
                 metadata: {
                   video_url: analysisData.result.matrix_analysis?.statistics?.video_url,
-                  evaluation_type: analysisData.result.evaluation_type,
                   from_workflow: true
-                }
+                } as any
               }
 
               loadedAnalyses.push(analysis)
@@ -449,8 +451,44 @@ export default function ComprehensiveReportsPage() {
 
   // Single analysis mode - display HTML report in iframe
   const singleAnalysisId = searchParams.get('analysis_id')
+  const [iframeError, setIframeError] = useState(false)
+  const [iframeLoading, setIframeLoading] = useState(true)
+
   if (singleAnalysisId && !loading) {
     const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+    const reportUrl = `${apiUrl}/api/reports/html/${singleAnalysisId}`
+
+    // Show error UI if iframe failed to load
+    if (iframeError) {
+      return (
+        <div className="main" style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
+          <div className="status status-error">
+            <h2 style={{ marginBottom: 'var(--space-3)' }}>⚠️ 보고서를 불러올 수 없습니다</h2>
+            <p style={{ marginBottom: 'var(--space-2)' }}>
+              분석 ID: <code>{singleAnalysisId}</code>
+            </p>
+            <p style={{ marginBottom: 'var(--space-4)' }}>
+              보고서를 찾을 수 없거나 생성 중 오류가 발생했습니다.
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
+              <button
+                className="btn"
+                onClick={() => {
+                  setIframeError(false)
+                  setIframeLoading(true)
+                  window.location.reload()
+                }}
+              >
+                다시 시도
+              </button>
+              <a href="/comprehensive-reports" className="btn btn-secondary">
+                보고서 목록으로
+              </a>
+            </div>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div style={{
@@ -464,15 +502,35 @@ export default function ComprehensiveReportsPage() {
         left: 0,
         background: '#f8f9fa'
       }}>
+        {iframeLoading && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center'
+          }}>
+            <div className="spinner"></div>
+            <p style={{ marginTop: 'var(--space-3)' }}>보고서를 불러오는 중...</p>
+          </div>
+        )}
         <iframe
-          src={`${apiUrl}/api/reports/html/${singleAnalysisId}`}
+          src={reportUrl}
           style={{
             width: '100%',
             height: '100%',
             border: 'none',
-            display: 'block'
+            display: 'block',
+            opacity: iframeLoading ? 0 : 1,
+            transition: 'opacity 0.3s ease'
           }}
           title="분석 보고서"
+          onLoad={() => setIframeLoading(false)}
+          onError={() => {
+            console.error('Iframe load failed for:', reportUrl)
+            setIframeError(true)
+            setIframeLoading(false)
+          }}
         />
       </div>
     )
