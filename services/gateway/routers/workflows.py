@@ -129,10 +129,22 @@ async def run_full_analysis_workflow(
                 transcription_job_id = transcription_data.get("job_id") or transcription_data["result"].get("transcript_id")
                 segments = transcription_data["result"].get("segments", [])
 
+                # 캐시 히트에도 세그먼트 검증 (엄격 모드)
+                segment_count = len(segments) if segments else 0
+                if segment_count < 10:
+                    logger.warning(f"Cached result has insufficient segments: {segment_count}")
+                    update_status(
+                        "transcription",
+                        "error",
+                        f"캐시된 전사 결과에 세그먼트 부족 (최소 10개 필요, 현재 {segment_count}개). 새로 전사를 시작합니다.",
+                        {"transcription_job_id": transcription_job_id}
+                    )
+                    raise Exception(f"Cached result has insufficient segments: {segment_count}. Please clear cache and retry.")
+
                 update_status(
                     "transcription",
                     "completed",
-                    "Transcription completed (cache hit)",
+                    f"Transcription completed (cache hit, {segment_count} segments)",
                     {"transcription_job_id": transcription_job_id}
                 )
             else:
@@ -151,42 +163,38 @@ async def run_full_analysis_workflow(
 
                 while attempt < max_attempts:
                     status_response = await client.get(
-                        f"{settings.transcription_service_url}/api/transcribe/status/{transcription_job_id}"
+                        f"{settings.transcription_service_url}/api/transcribe/{transcription_job_id}"
                     )
 
                     if status_response.status_code == 200:
                         status_data = status_response.json()
 
-                        if status_data.get("status") == "completed":
-                            # Get transcript
-                            result_response = await client.get(
-                                f"{settings.transcription_service_url}/api/transcribe/result/{transcription_job_id}"
-                            )
+                        # Handle both "completed" and "success" status values
+                        if status_data.get("status") in ("completed", "success"):
+                            # Get transcript from status response (result is embedded)
+                            result_data = status_data.get("result", {})
+                            transcript_text = result_data.get("transcript", "")
+                            segments = result_data.get("segments", [])
 
-                            if result_response.status_code == 200:
-                                transcript_data = result_response.json()
-                                transcript_text = transcript_data.get("transcript", "")
-                                segments = transcript_data.get("segments", [])
-
-                                # 세그먼트 최소 개수 검증 (엄격 모드)
-                                if not segments or len(segments) < 10:
-                                    segment_count = len(segments) if segments else 0
-                                    logger.error(f"Insufficient segments from transcription: {segment_count}")
-                                    update_status(
-                                        "transcription",
-                                        "error",
-                                        f"전사 세그먼트 부족 (최소 10개 필요, 현재 {segment_count}개)",
-                                        {"transcription_job_id": transcription_job_id}
-                                    )
-                                    raise Exception(f"Insufficient segments: {segment_count} (minimum 10 required)")
-
+                            # 세그먼트 최소 개수 검증 (엄격 모드)
+                            if not segments or len(segments) < 10:
+                                segment_count = len(segments) if segments else 0
+                                logger.error(f"Insufficient segments from transcription: {segment_count}")
                                 update_status(
                                     "transcription",
-                                    "completed",
-                                    f"Transcription completed ({len(segments)} segments)",
+                                    "error",
+                                    f"전사 세그먼트 부족 (최소 10개 필요, 현재 {segment_count}개)",
                                     {"transcription_job_id": transcription_job_id}
                                 )
-                                break
+                                raise Exception(f"Insufficient segments: {segment_count} (minimum 10 required)")
+
+                            update_status(
+                                "transcription",
+                                "completed",
+                                f"Transcription completed ({len(segments)} segments)",
+                                {"transcription_job_id": transcription_job_id}
+                            )
+                            break
 
                         elif status_data.get("status") == "failed":
                             raise Exception("Transcription job failed")
@@ -226,8 +234,8 @@ async def run_full_analysis_workflow(
                 f"Analysis job submitted: {analysis_job_id}"
             )
 
-            # Poll for analysis completion
-            max_attempts = 120
+            # Poll for analysis completion (90 minutes max due to API rate limiting)
+            max_attempts = 1080  # 90 minutes (5 sec intervals)
             attempt = 0
 
             while attempt < max_attempts:
