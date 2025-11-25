@@ -168,10 +168,22 @@ async def run_full_analysis_workflow(
                                 transcript_text = transcript_data.get("transcript", "")
                                 segments = transcript_data.get("segments", [])
 
+                                # 세그먼트 최소 개수 검증 (엄격 모드)
+                                if not segments or len(segments) < 10:
+                                    segment_count = len(segments) if segments else 0
+                                    logger.error(f"Insufficient segments from transcription: {segment_count}")
+                                    update_status(
+                                        "transcription",
+                                        "error",
+                                        f"전사 세그먼트 부족 (최소 10개 필요, 현재 {segment_count}개)",
+                                        {"transcription_job_id": transcription_job_id}
+                                    )
+                                    raise Exception(f"Insufficient segments: {segment_count} (minimum 10 required)")
+
                                 update_status(
                                     "transcription",
                                     "completed",
-                                    "Transcription completed",
+                                    f"Transcription completed ({len(segments)} segments)",
                                     {"transcription_job_id": transcription_job_id}
                                 )
                                 break

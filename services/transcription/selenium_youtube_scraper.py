@@ -634,12 +634,12 @@ class SeleniumYouTubeScraper:
                             self.driver.execute_script(method, transcript_container)
                         else:
                             self.driver.execute_script(method)
-                        time.sleep(0.3)  # 스크롤 간 대기 시간 단축
+                        time.sleep(1.0)  # 스크롤 간 대기 시간 (YouTube 동적 로딩용)
                     except:
                         continue
                 
-                # 새 콘텐츠 로드 대기 - 최적화
-                time.sleep(0.3)  # Further optimized from 1s to 0.3s
+                # 새 콘텐츠 로드 대기 - YouTube 동적 로딩 시간 확보
+                time.sleep(1.0)  # 충분한 로딩 시간 확보
                 scroll_attempts += 1
                 
                 # 새로운 세그먼트 수 확인
@@ -660,8 +660,8 @@ class SeleniumYouTubeScraper:
                     retry_count = 0  # 새 콘텐츠가 로드되면 재시도 카운터 리셋
                     last_count = new_count
                 
-                # 50분 영상 기준으로 대략 300-500개 세그먼트 예상
-                if new_count > 500:
+                # 긴 영상의 경우 1000개 이상 세그먼트 가능
+                if new_count > 1000:
                     logger.info("📈 Sufficient segments loaded, stopping scroll")
                     break
                 

@@ -651,24 +651,16 @@ async def process_comprehensive_cbil_analysis(
         job_data["message"] = "Step 2/3: Parsing utterances and building 3D matrix..."
         redis_client.setex(f"analysis_job:{job_id}", 7200, json.dumps(job_data))
 
-        # Use segments from Module 1 if available, otherwise fallback to regex
-        if segments and len(segments) > 0:
-            logger.info(f"Job {job_id}: Using {len(segments)} segments from Module 1")
+        # 세그먼트 검증 (엄격 모드 - 최소 10개 필요)
+        segment_count = len(segments) if segments else 0
+        if segment_count >= 10:
+            logger.info(f"Job {job_id}: Using {segment_count} segments from Module 1")
             from utils.utterance_parser import segments_to_utterances
             utterances = segments_to_utterances(segments)
         else:
-            # Fallback: Simple utterance parsing (split by sentences)
-            logger.warning(f"Job {job_id}: No segments provided, using regex fallback (may be inaccurate for Korean)")
-            import re
-            sentences = re.split(r'[.!?]\s+', text)
-            utterances = [
-                {
-                    "id": f"utt_{i:04d}",
-                    "text": sentence.strip(),
-                    "timestamp": f"00:{i//60:02d}:{i%60:02d}"
-                }
-                for i, sentence in enumerate(sentences) if sentence.strip()
-            ]
+            # 세그먼트 부족 시 에러 반환 (regex fallback 제거 - 엄격 모드)
+            logger.error(f"Job {job_id}: Insufficient segments: {segment_count} (minimum 10 required)")
+            raise ValueError(f"분석을 위해 최소 10개 이상의 세그먼트가 필요합니다. 현재: {segment_count}개")
 
         logger.info(f"Job {job_id}: Parsed {len(utterances)} utterances")
 

@@ -104,6 +104,10 @@ class MetricsCalculator:
         data_points = matrix_data["data"]
         total = len(data_points)
 
+        # 최소 데이터 검증 (엄격 모드)
+        if total < 10:
+            raise ValueError(f"분석에 필요한 최소 발화수(10개)를 충족하지 못함: {total}개")
+
         # Count by stage
         stage_counts = Counter(p["stage"] for p in data_points)
 
@@ -156,6 +160,10 @@ class MetricsCalculator:
                 context_counts[context] += 1
 
         total_context_tags = sum(context_counts.values())
+
+        # 0 나누기 방지 (엄격 모드)
+        if total_context_tags == 0:
+            raise ValueError("컨텍스트 태그가 없습니다. 발화 분류가 실패했습니다.")
 
         # 5. Question ratio
         question_ratio = context_counts.get("question", 0) / total_context_tags

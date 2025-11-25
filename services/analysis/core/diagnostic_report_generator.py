@@ -1783,8 +1783,8 @@ class DiagnosticReportGenerator:
         /* ============ Three-Column Layout ============ */
         .three-column-layout {{
             display: grid;
-            grid-template-columns: 40% 30% 28%;
-            gap: 2%;
+            grid-template-columns: 1fr 1fr 1fr;  /* 균등 분배 (40:30:28 → 1:1:1) */
+            gap: 1.5rem;
             margin-top: var(--space-4-compact);
             align-items: start;
         }}
@@ -1994,10 +1994,16 @@ class DiagnosticReportGenerator:
             .inbody-table-container {{
                 padding: 4px;
                 margin: 6px 0;
+                page-break-inside: avoid;
             }}
 
             .inbody-metrics-table {{
                 font-size: 6px;
+                page-break-inside: avoid;
+            }}
+
+            .inbody-metrics-table tbody tr {{
+                page-break-inside: avoid;
             }}
 
             .inbody-metrics-table th,
