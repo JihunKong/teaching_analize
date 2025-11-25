@@ -1,0 +1,81 @@
+/**
+ * TVAS Design System - Spacing Tokens
+ *
+ * Consistent spacing scale based on 4px increments.
+ * Provides vertical rhythm and predictable layouts.
+ */
+
+:root {
+  /* ============ Spacing Scale (4px base unit) ============ */
+
+  /* Zero */
+  --space-0: 0;
+  --space-px: 1px;
+
+  /* Extra Small: 2-6px */
+  --space-0-5: 0.125rem;  /* 2px */
+  --space-1: 0.25rem;     /* 4px */
+  --space-1-5: 0.375rem;  /* 6px */
+
+  /* Small: 8-12px */
+  --space-2: 0.5rem;      /* 8px */
+  --space-2-5: 0.625rem;  /* 10px */
+  --space-3: 0.75rem;     /* 12px */
+
+  /* Medium: 16-24px */
+  --space-4: 1rem;        /* 16px */
+  --space-5: 1.25rem;     /* 20px */
+  --space-6: 1.5rem;      /* 24px */
+
+  /* Large: 28-48px */
+  --space-7: 1.75rem;     /* 28px */
+  --space-8: 2rem;        /* 32px */
+  --space-10: 2.5rem;     /* 40px */
+  --space-12: 3rem;       /* 48px */
+
+  /* Extra Large: 64-80px */
+  --space-16: 4rem;       /* 64px */
+  --space-20: 5rem;       /* 80px */
+
+  /* ============ Semantic Spacing Aliases ============ */
+
+  /* Gaps between sections */
+  --space-section: var(--space-8);       /* 32px - Major section spacing */
+  --space-subsection: var(--space-6);    /* 24px - Subsection spacing */
+
+  /* Card/component gaps */
+  --space-card-gap: var(--space-4);      /* 16px - Between cards in grid */
+  --space-card-padding: var(--space-4);  /* 16px - Internal card padding */
+
+  /* Text spacing */
+  --space-text-stack: var(--space-2);    /* 8px - Between paragraphs */
+  --space-heading-stack: var(--space-3); /* 12px - After headings */
+
+  /* ============ Compact Variants (For Print/Dense Layouts) ============ */
+
+  /* Reduced spacing for print media */
+  --space-compact-section: var(--space-3);      /* 12px → 32px */
+  --space-compact-subsection: var(--space-2);   /* 8px → 24px */
+  --space-compact-card: var(--space-2);         /* 8px → 16px */
+
+  /* ============ Grid Gaps ============ */
+
+  /* Grid/flexbox gaps at different breakpoints */
+  --gap-xs: var(--space-1);   /* 4px - Tight grids */
+  --gap-sm: var(--space-2);   /* 8px - Compact grids */
+  --gap-md: var(--space-4);   /* 16px - Default grids */
+  --gap-lg: var(--space-6);   /* 24px - Spacious grids */
+  --gap-xl: var(--space-8);   /* 32px - Wide grids */
+
+  /* ============ Container Widths (Not spacing, but related) ============ */
+
+  --container-max-width: 1440px;
+  --container-padding: var(--space-4);
+
+  /* ============ Print-Specific Spacing ============ */
+
+  /* Reduced spacing for A4 print layouts */
+  --space-print-section: 8px;
+  --space-print-card: 6px;
+  --space-print-gap: 4px;
+}

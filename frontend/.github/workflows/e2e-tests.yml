@@ -1,0 +1,456 @@
+# GitHub Actions Workflow for E2E Testing
+# Comprehensive CI/CD pipeline for Playwright E2E tests
+
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'playwright.config.ts'
+      - 'docker-compose.test.yml'
+      - '.github/workflows/e2e-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'playwright.config.ts'
+      - 'docker-compose.test.yml'
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_pattern:
+        description: 'Test pattern to run (e.g., transcription)'
+        required: false
+        default: ''
+      environment:
+        description: 'Test environment'
+        required: false
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - staging
+          - production
+      headed:
+        description: 'Run tests in headed mode'
+        required: false
+        default: false
+        type: boolean
+      debug:
+        description: 'Run tests in debug mode'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  PLAYWRIGHT_VERSION: '1.40.0'
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  # Job to check if tests should run based on changes
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should-test: ${{ steps.changes.outputs.should-test }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for relevant changes
+        id: changes
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-test=true" >> $GITHUB_OUTPUT
+          elif git diff --name-only HEAD^ HEAD | grep -E "\.(ts|tsx|js|jsx|json)$|tests/|playwright\.config\.ts|docker-compose\.test\.yml"; then
+            echo "should-test=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-test=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Main E2E testing job
+  e2e-tests:
+    needs: changes
+    if: needs.changes.outputs.should-test == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1/3, 2/3, 3/3]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Create test directories
+        run: |
+          mkdir -p test-results/{screenshots,downloads,html-report,traces}
+          mkdir -p test-results/junit
+
+      - name: Setup test environment variables
+        run: |
+          echo "CI=true" >> $GITHUB_ENV
+          echo "NODE_ENV=test" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_BROWSERS_PATH=/home/runner/.cache/ms-playwright" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_HTML_REPORT=test-results/html-report" >> $GITHUB_ENV
+
+      - name: Build and start services
+        run: |
+          # Start services in background
+          docker-compose -f docker-compose.test.yml up -d --build
+          
+          # Wait for services to be ready
+          timeout 300 bash -c '
+            until curl -f http://localhost:3000/health >/dev/null 2>&1; do
+              echo "Waiting for frontend..."
+              sleep 5
+            done
+          '
+          
+          # Check mock services
+          for port in 8000 8001 8002; do
+            timeout 60 bash -c "
+              until curl -f http://localhost:$port/__admin/health >/dev/null 2>&1; do
+                echo \"Waiting for mock service on port $port...\"
+                sleep 2
+              done
+            " || echo "Warning: Mock service on port $port may not be ready"
+          done
+
+      - name: Run E2E tests
+        run: |
+          # Set test arguments based on inputs
+          TEST_ARGS="--project=${{ matrix.browser }} --shard=${{ matrix.shard }}"
+          
+          if [[ "${{ github.event.inputs.test_pattern }}" != "" ]]; then
+            TEST_ARGS="$TEST_ARGS --grep '${{ github.event.inputs.test_pattern }}'"
+          fi
+          
+          if [[ "${{ github.event.inputs.headed }}" == "true" ]]; then
+            TEST_ARGS="$TEST_ARGS --headed"
+          fi
+          
+          if [[ "${{ github.event.inputs.debug }}" == "true" ]]; then
+            TEST_ARGS="$TEST_ARGS --debug"
+          fi
+          
+          # Run tests
+          npx playwright test $TEST_ARGS \
+            --reporter=html,json,junit \
+            --workers=2 \
+            --retries=2 \
+            --timeout=60000
+        env:
+          PLAYWRIGHT_TEST_RESULTS_DIR: test-results
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ matrix.browser }}-${{ strategy.job-index }}.xml
+
+      - name: Collect service logs on failure
+        if: failure()
+        run: |
+          echo "=== Frontend Logs ===" 
+          docker-compose -f docker-compose.test.yml logs frontend || true
+          
+          echo "=== Nginx Logs ==="
+          docker-compose -f docker-compose.test.yml logs nginx || true
+          
+          echo "=== Mock Services Logs ==="
+          docker-compose -f docker-compose.test.yml logs mock-transcription mock-analysis mock-reports || true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.browser }}-${{ strategy.job-index }}
+          path: |
+            test-results/
+            !test-results/html-report/
+          retention-days: 7
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: html-report-${{ matrix.browser }}-${{ strategy.job-index }}
+          path: test-results/html-report/
+          retention-days: 7
+
+      - name: Upload screenshots and videos
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-artifacts-${{ matrix.browser }}-${{ strategy.job-index }}
+          path: |
+            test-results/screenshots/
+            test-results/videos/
+            test-results/traces/
+          retention-days: 14
+
+      - name: Cleanup Docker containers
+        if: always()
+        run: |
+          docker-compose -f docker-compose.test.yml down --volumes --remove-orphans || true
+          docker system prune -f --volumes || true
+
+  # Job to merge and publish test results
+  publish-results:
+    needs: e2e-tests
+    if: always() && needs.e2e-tests.result != 'cancelled'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: merged-results
+          merge-multiple: true
+
+      - name: Download all HTML reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: html-report-*
+          path: merged-reports
+          merge-multiple: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Merge test results
+        run: |
+          # Install dependencies for merging
+          npm install --no-save junit-merge playwright-merge-reports
+          
+          # Merge JUnit reports
+          npx junit-merge --out merged-results/junit-merged.xml merged-results/junit-*.xml
+          
+          # Generate combined HTML report
+          npx playwright merge-reports --reporter html merged-reports > merged-results/combined-report.html || true
+
+      - name: Generate test summary
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            
+            let totalTests = 0;
+            let passedTests = 0;
+            let failedTests = 0;
+            let skippedTests = 0;
+            let totalDuration = 0;
+            
+            // Read all JSON result files
+            const resultsDir = 'merged-results';
+            const files = fs.readdirSync(resultsDir).filter(f => f.endsWith('.json'));
+            
+            files.forEach(file => {
+              try {
+                const data = JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8'));
+                if (data.stats) {
+                  totalTests += data.stats.expected || 0;
+                  passedTests += data.stats.passed || 0;
+                  failedTests += data.stats.failed || 0;
+                  skippedTests += data.stats.skipped || 0;
+                  totalDuration += data.stats.duration || 0;
+                }
+              } catch (e) {
+                console.warn('Could not parse:', file);
+              }
+            });
+            
+            const summary = {
+              total: totalTests,
+              passed: passedTests,
+              failed: failedTests,
+              skipped: skippedTests,
+              duration: Math.round(totalDuration / 1000),
+              success: failedTests === 0,
+              timestamp: new Date().toISOString()
+            };
+            
+            fs.writeFileSync('merged-results/summary.json', JSON.stringify(summary, null, 2));
+            
+            console.log('=== E2E Test Summary ===');
+            console.log('Total tests:', summary.total);
+            console.log('Passed:', summary.passed);
+            console.log('Failed:', summary.failed);
+            console.log('Skipped:', summary.skipped);
+            console.log('Duration:', summary.duration + 's');
+            console.log('Success:', summary.success);
+            
+            // Set GitHub output
+            console.log('::set-output name=success::' + summary.success);
+            console.log('::set-output name=total::' + summary.total);
+            console.log('::set-output name=passed::' + summary.passed);
+            console.log('::set-output name=failed::' + summary.failed);
+          "
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: E2E Test Results
+          path: 'merged-results/junit-merged.xml'
+          reporter: jest-junit
+          fail-on-error: 'false'
+
+      - name: Upload merged results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: merged-test-results
+          path: merged-results/
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = JSON.parse(fs.readFileSync('merged-results/summary.json', 'utf8'));
+            
+            const status = summary.success ? '✅' : '❌';
+            const body = `## ${status} E2E Test Results
+            
+            | Metric | Value |
+            |--------|--------|
+            | Total Tests | ${summary.total} |
+            | Passed | ${summary.passed} |
+            | Failed | ${summary.failed} |
+            | Skipped | ${summary.skipped} |
+            | Duration | ${summary.duration}s |
+            
+            ${summary.success ? 'All tests passed! 🎉' : 'Some tests failed. Please check the logs for details.'}
+            
+            [View detailed results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # Job for performance monitoring
+  performance-check:
+    needs: e2e-tests
+    if: always() && needs.e2e-tests.result == 'success'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: results
+          merge-multiple: true
+
+      - name: Analyze performance metrics
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Performance thresholds (in ms)
+            const thresholds = {
+              pageLoad: 5000,
+              apiResponse: 30000,
+              testExecution: 60000
+            };
+            
+            console.log('=== Performance Analysis ===');
+            
+            // Analyze test durations
+            const files = fs.readdirSync('results').filter(f => f.endsWith('.json'));
+            let slowTests = [];
+            
+            files.forEach(file => {
+              try {
+                const data = JSON.parse(fs.readFileSync(path.join('results', file), 'utf8'));
+                if (data.suites) {
+                  data.suites.forEach(suite => {
+                    suite.specs?.forEach(spec => {
+                      spec.tests?.forEach(test => {
+                        test.results?.forEach(result => {
+                          if (result.duration > thresholds.testExecution) {
+                            slowTests.push({
+                              name: test.title,
+                              duration: result.duration,
+                              suite: suite.title
+                            });
+                          }
+                        });
+                      });
+                    });
+                  });
+                }
+              } catch (e) {
+                console.warn('Could not analyze:', file);
+              }
+            });
+            
+            if (slowTests.length > 0) {
+              console.log('Slow tests detected:');
+              slowTests.forEach(test => {
+                console.log(`- ${test.suite}: ${test.name} (${test.duration}ms)`);
+              });
+            } else {
+              console.log('No slow tests detected ✅');
+            }
+          "
+
+      - name: Create performance report
+        run: |
+          echo "# Performance Report" > performance-report.md
+          echo "" >> performance-report.md
+          echo "Generated on: $(date)" >> performance-report.md
+          echo "" >> performance-report.md
+          echo "## Thresholds" >> performance-report.md
+          echo "- Page Load: 5s" >> performance-report.md
+          echo "- API Response: 30s" >> performance-report.md  
+          echo "- Test Execution: 60s" >> performance-report.md
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: performance-report.md
+          retention-days: 30

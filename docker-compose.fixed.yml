@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aiboa_postgres
+    environment:
+      POSTGRES_DB: aiboa
+      POSTGRES_USER: aiboa_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiboa_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"  # Bind to localhost only for security
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiboa_user -d aiboa"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: aiboa_redis
+    ports:
+      - "127.0.0.1:6379:6379"  # Bind to localhost only for security
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+
+  # Transcription Service
+  transcription:
+    build:
+      context: ./services/transcription
+      dockerfile: Dockerfile
+    container_name: aiboa_transcription
+    environment:
+      # Database
+      DATABASE_URL: postgresql://aiboa_user:${POSTGRES_PASSWORD:-aiboa_password}@postgres:5432/aiboa
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      
+      # Application
+      API_KEY: ${TRANSCRIPTION_API_KEY:-transcription-api-key}
+      STORAGE_PATH: /app/data
+      
+    volumes:
+      - transcription_data:/app/data
+    # Remove external port exposure - only accessible via nginx
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+
+  # Analysis Service  
+  analysis:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: aiboa_analysis
+    environment:
+      # Database
+      DATABASE_URL: postgresql://aiboa_user:${POSTGRES_PASSWORD:-aiboa_password}@postgres:5432/aiboa
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # API Keys
+      SOLAR_API_KEY: ${SOLAR_API_KEY}
+      UPSTAGE_API_KEY: ${UPSTAGE_API_KEY}
+      
+      # Application
+      API_KEY: ${ANALYSIS_API_KEY:-analysis-api-key}
+      TRANSCRIPTION_API_URL: http://transcription:8000
+      
+    # Remove external port exposure - only accessible via nginx
+    expose:
+      - "8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      transcription:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+
+  # Nginx Reverse Proxy + Static File Server
+  nginx:
+    image: nginx:alpine
+    container_name: aiboa_nginx
+    ports:
+      - "80:80"    # Only port 80 exposed - consolidation achieved!
+      - "443:443"  # For future SSL setup
+    volumes:
+      # Use our fixed nginx configuration
+      - ./nginx.fixed.conf:/etc/nginx/nginx.conf:ro
+      
+      # Mount the frontend static files
+      - ./frontend/out:/usr/share/nginx/html:ro
+      
+      # SSL certificates (for future use)
+      - ./ssl:/etc/nginx/ssl:ro
+      
+      # Logs
+      - ./logs/nginx:/var/log/nginx
+      
+    depends_on:
+      - transcription
+      - analysis
+    restart: unless-stopped
+    networks:
+      - aiboa_network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  transcription_data:
+    driver: local
+
+networks:
+  aiboa_network:
+    driver: bridge

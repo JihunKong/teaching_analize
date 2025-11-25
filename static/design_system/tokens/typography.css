@@ -1,0 +1,97 @@
+/**
+ * TVAS Design System - Typography Tokens
+ *
+ * Responsive typography scale using clamp() for fluid sizing.
+ * Ensures proper hierarchy and readability across all viewport sizes.
+ */
+
+:root {
+  /* ============ Font Families ============ */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: "SF Mono", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+
+  /* ============ Font Sizes (Responsive with clamp()) ============ */
+  /* Format: clamp(min, preferred, max) */
+
+  /* Extra Small: 12-13px - Minimum readable size */
+  --font-size-xs: clamp(0.75rem, 1vw, 0.8125rem);
+
+  /* Small: 13-14px - Secondary text, labels */
+  --font-size-sm: clamp(0.8125rem, 1.2vw, 0.875rem);
+
+  /* Base: 14-16px - Body text baseline */
+  --font-size-base: clamp(0.875rem, 1.5vw, 1rem);
+
+  /* Medium: 15-17px - Emphasized body text */
+  --font-size-md: clamp(0.9375rem, 1.6vw, 1.0625rem);
+
+  /* Large: 16-18px - Section subtitles */
+  --font-size-lg: clamp(1rem, 1.8vw, 1.125rem);
+
+  /* Extra Large: 18-22px - Section titles */
+  --font-size-xl: clamp(1.125rem, 2vw, 1.375rem);
+
+  /* 2XL: 22-30px - Page titles */
+  --font-size-2xl: clamp(1.375rem, 2.5vw, 1.875rem);
+
+  /* 3XL: 30-36px - Major headings */
+  --font-size-3xl: clamp(1.875rem, 3vw, 2.25rem);
+
+  /* Hero: 36-48px - Hero score display */
+  --font-size-hero: clamp(2.25rem, 4vw, 3rem);
+
+  /* ============ Print-Safe Sizes (Fixed for consistency) ============ */
+  --font-size-print-body: 10px;      /* Minimum for print body text */
+  --font-size-print-small: 9px;      /* Minimum for print small text */
+  --font-size-print-title: 14px;     /* Print section titles */
+  --font-size-print-hero: 32px;      /* Print hero score */
+
+  /* ============ Font Weights ============ */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Semantic aliases */
+  --weight-body: var(--font-weight-normal);
+  --weight-emphasis: var(--font-weight-medium);
+  --weight-strong: var(--font-weight-semibold);
+  --weight-heading: var(--font-weight-bold);
+
+  /* ============ Line Heights ============ */
+  --line-height-tight: 1.25;         /* Headings, compact text */
+  --line-height-snug: 1.375;         /* Slightly relaxed */
+  --line-height-normal: 1.5;         /* Body text */
+  --line-height-relaxed: 1.75;       /* Comfortable reading */
+
+  /* ============ Letter Spacing ============ */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+
+  /* ============ Semantic Typography Aliases ============ */
+
+  /* Body text */
+  --text-body: var(--font-size-base);
+  --text-body-weight: var(--font-weight-normal);
+  --text-body-line-height: var(--line-height-normal);
+
+  /* Section titles */
+  --text-section-title: var(--font-size-xl);
+  --text-section-title-weight: var(--font-weight-bold);
+
+  /* Subtitles */
+  --text-subtitle: var(--font-size-lg);
+  --text-subtitle-weight: var(--font-weight-semibold);
+
+  /* Small text (labels, metadata) */
+  --text-small: var(--font-size-sm);
+  --text-small-weight: var(--font-weight-normal);
+
+  /* Emphasis */
+  --text-emphasis: var(--font-size-md);
+  --text-emphasis-weight: var(--font-weight-semibold);
+}

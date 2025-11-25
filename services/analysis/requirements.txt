@@ -1,0 +1,23 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+redis==5.0.1
+requests==2.31.0
+python-multipart==0.0.6
+weasyprint==61.2
+sqlalchemy==1.4.50
+psycopg2-binary==2.9.9
+numpy==1.24.3
+matplotlib==3.7.2
+pandas==2.0.3
+
+# Module 2: 3D Matrix Analysis
+openai>=1.54.0
+anthropic>=0.39.0
+pyyaml==6.0.1
+
+# Module 4: Advanced Report Generation
+plotly==5.18.0
+openpyxl==3.1.2
+jsonschema==4.20.0
+markdown==3.5.1  # For rendering markdown in HTML reports

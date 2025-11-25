@@ -1,0 +1,189 @@
+/**
+ * TVAS Design System - Button Components
+ *
+ * Standardized button styles with size and variant modifiers.
+ */
+
+/* ============ Base Button ============ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--button-padding-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  border: none;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============ Size Variants ============ */
+
+.btn--sm {
+  padding: var(--button-padding-sm);
+  font-size: var(--font-size-sm);
+}
+
+.btn--lg {
+  padding: var(--button-padding-lg);
+  font-size: var(--font-size-lg);
+}
+
+/* ============ Color Variants ============ */
+
+/* Primary button */
+.btn--primary {
+  background: var(--primary-600);
+  color: var(--color-white, #FFFFFF);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--primary-700);
+  box-shadow: var(--shadow-md);
+}
+
+.btn--primary:active:not(:disabled) {
+  background: var(--primary-800, #1E40AF);
+}
+
+/* Secondary button */
+.btn--secondary {
+  background: var(--gray-100, #F3F4F6);
+  color: var(--gray-900);
+  border: var(--border-medium) solid var(--gray-300);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--gray-200);
+  border-color: var(--gray-400, #9CA3AF);
+}
+
+.btn--secondary:active:not(:disabled) {
+  background: var(--gray-300, #D1D5DB);
+}
+
+/* Success button */
+.btn--success {
+  background: var(--status-excellent);
+  color: var(--color-white, #FFFFFF);
+}
+
+.btn--success:hover:not(:disabled) {
+  background: var(--status-excellent-border);
+}
+
+/* Danger button */
+.btn--danger {
+  background: var(--status-poor);
+  color: var(--color-white, #FFFFFF);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--status-poor-border);
+}
+
+/* Ghost button (transparent) */
+.btn--ghost {
+  background: transparent;
+  color: var(--primary-600);
+  border: var(--border-medium) solid var(--primary-600);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--primary-50, #EFF6FF);
+}
+
+.btn--ghost:active:not(:disabled) {
+  background: var(--primary-100, #DBEAFE);
+}
+
+/* ============ Floating Action Button ============ */
+
+.btn--floating {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+}
+
+.btn--floating:hover:not(:disabled) {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-2px);
+}
+
+.btn--floating:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ============ Loading State ============ */
+
+.btn--loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.btn--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-right-color: transparent;
+  animation: btn-spin 0.6s linear infinite;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============ Icon Support ============ */
+
+.btn__icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.25em;
+}
+
+.btn__icon--left {
+  margin-right: calc(var(--space-2) * -0.5);
+}
+
+.btn__icon--right {
+  margin-left: calc(var(--space-2) * -0.5);
+}
+
+/* ============ Focus States (Accessibility) ============ */
+
+.btn:focus-visible {
+  outline: 3px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+/* ============ Print Override ============ */
+
+@media print {
+  .btn,
+  .btn--floating {
+    display: none !important;
+  }
+}

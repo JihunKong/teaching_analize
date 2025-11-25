@@ -1,0 +1,232 @@
+/**
+ * TVAS Design System - Loading States
+ *
+ * Skeleton loaders and loading indicators for async content.
+ */
+
+/* ============ Skeleton Base ============ */
+
+.skeleton {
+  background: var(--loading-skeleton-bg);
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--loading-skeleton-shimmer) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* ============ Skeleton Variants ============ */
+
+/* Text skeleton */
+.skeleton--text {
+  height: 1em;
+  width: 100%;
+  margin-bottom: 0.5em;
+}
+
+.skeleton--text:last-child {
+  width: 80%;
+}
+
+/* Heading skeleton */
+.skeleton--heading {
+  height: 1.5em;
+  width: 60%;
+  margin-bottom: 1em;
+}
+
+/* Card skeleton */
+.skeleton--card {
+  height: 200px;
+  width: 100%;
+  border-radius: var(--radius-card);
+}
+
+/* Chart skeleton */
+.skeleton--chart {
+  height: 300px;
+  width: 100%;
+  border-radius: var(--radius-chart);
+}
+
+/* Avatar/icon skeleton */
+.skeleton--avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+}
+
+/* ============ Spinner ============ */
+
+.spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--gray-200);
+  border-radius: 50%;
+  border-top-color: var(--primary-600);
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner--lg {
+  width: 32px;
+  height: 32px;
+  border-width: 4px;
+}
+
+/* Spinner color variants */
+.spinner--primary {
+  border-color: var(--gray-200);
+  border-top-color: var(--primary-600);
+}
+
+.spinner--white {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: var(--color-white, #FFFFFF);
+}
+
+/* ============ Loading Overlay ============ */
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+.loading-overlay--dark {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* ============ Pulse Animation ============ */
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ============ Dots Loader ============ */
+
+.dots-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dots-loader__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary-600);
+  border-radius: 50%;
+  animation: dots-bounce 1.4s ease-in-out infinite;
+}
+
+.dots-loader__dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dots-loader__dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes dots-bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============ Progress Bar ============ */
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--primary-600);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.progress-bar--indeterminate .progress-bar__fill {
+  width: 30%;
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+/* ============ Print Override ============ */
+
+@media print {
+  .skeleton,
+  .spinner,
+  .loading-overlay,
+  .pulse,
+  .dots-loader,
+  .progress-bar {
+    display: none !important;
+  }
+}

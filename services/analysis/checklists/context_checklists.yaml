@@ -1,0 +1,342 @@
+# Context (Teaching Function) Classification Checklist
+# 수업 맥락 분류: 설명 / 질문 / 피드백 / 촉진 / 관리
+#
+# 하나의 발화가 여러 맥락을 동시에 가질 수 있음 (Multi-label classification)
+# 각 맥락에 대해 독립적으로 3회 실행 후 다수결
+
+contexts:
+  explanation:
+    name: "설명"
+    english: "Explanation"
+    description: "개념, 원리, 절차 등을 설명하는 발화"
+    color: "#3B82F6"  # Blue
+
+    checklist:
+      - id: "exp_01"
+        question: "이 발화에서 개념의 정의나 의미를 설명하고 있습니까?"
+        examples:
+          positive:
+            - "이차방정식이란 x²항을 포함하는 방정식을 말합니다"
+            - "광합성은 빛을 이용해 포도당을 만드는 과정이에요"
+            - "민주주의란 국민이 주인인 정치 체제입니다"
+          negative:
+            - "이차방정식이 뭐죠?" # 질문
+            - "맞아요, 잘 설명했어요" # 피드백
+
+      - id: "exp_02"
+        question: "이 발화에서 원리나 법칙을 설명하고 있습니까?"
+        examples:
+          positive:
+            - "물은 100도에서 끓는데, 이는 기압과 관계가 있어요"
+            - "작용-반작용의 법칙에 따르면"
+            - "공급이 증가하면 가격이 하락하는 경향이 있습니다"
+          negative:
+            - "왜 물이 끓을까요?" # 질문
+
+      - id: "exp_03"
+        question: "이 발화에서 절차나 방법을 단계적으로 설명하고 있습니까?"
+        examples:
+          positive:
+            - "먼저 양변을 이항하고, 그 다음 인수분해를 합니다"
+            - "첫 번째로 시료를 준비하고, 두 번째로 현미경에 올립니다"
+            - "1단계는 자료 수집, 2단계는 분석입니다"
+          negative:
+            - "어떤 순서로 해야 하나요?" # 질문
+
+      - id: "exp_04"
+        question: "이 발화에서 예시나 사례를 들어 설명하고 있습니까?"
+        examples:
+          positive:
+            - "예를 들어, 사과가 떨어지는 것도 중력 때문이에요"
+            - "우리 주변에서 보면, 자동차의 브레이크가 마찰력을 이용한 예죠"
+            - "실제로 2008년 금융위기 때를 보면"
+          negative:
+            - "예를 들어볼까요?" # 촉진
+
+      - id: "exp_05"
+        question: "이 발화에서 이유나 근거를 설명하고 있습니까?"
+        examples:
+          positive:
+            - "왜냐하면 분자의 운동 에너지가 증가하기 때문입니다"
+            - "그 이유는 수요와 공급의 균형 때문이에요"
+            - "이렇게 하는 이유는 정확도를 높이기 위해서입니다"
+          negative:
+            - "왜 그럴까요?" # 질문
+
+  question:
+    name: "질문"
+    english: "Question"
+    description: "학생에게 질문하여 사고를 유도하는 발화"
+    color: "#10B981"  # Green
+
+    checklist:
+      - id: "que_01"
+        question: "이 발화에서 사실적 지식을 묻는 질문을 하고 있습니까?"
+        examples:
+          positive:
+            - "피타고라스 정리가 뭐죠?"
+            - "세포의 기본 단위는 무엇인가요?"
+            - "6.25 전쟁이 언제 일어났나요?"
+          negative:
+            - "피타고라스 정리는 a²+b²=c²입니다" # 설명
+
+      - id: "que_02"
+        question: "이 발화에서 이해도를 확인하는 질문을 하고 있습니까?"
+        examples:
+          positive:
+            - "이해됐나요?"
+            - "어느 부분이 어려워요?"
+            - "헷갈리는 게 있나요?"
+          negative:
+            - "잘 이해했네요" # 피드백
+
+      - id: "que_03"
+        question: "이 발화에서 추론이나 분석을 요구하는 질문을 하고 있습니까?"
+        examples:
+          positive:
+            - "왜 이런 현상이 일어날까요?"
+            - "이 두 개념의 차이점은 무엇일까요?"
+            - "만약 ~라면 어떻게 될까요?"
+          negative:
+            - "그 이유는 ~때문입니다" # 설명
+
+      - id: "que_04"
+        question: "이 발화에서 의견이나 생각을 묻는 질문을 하고 있습니까?"
+        examples:
+          positive:
+            - "너희 생각은 어때?"
+            - "이 문제를 어떻게 해결하면 좋을까요?"
+            - "어떤 방법이 더 효율적일까요?"
+          negative:
+            - "좋은 생각이에요" # 피드백
+
+      - id: "que_05"
+        question: "이 발화에서 예시를 요구하는 질문을 하고 있습니까?"
+        examples:
+          positive:
+            - "실생활의 예를 들어볼까요?"
+            - "비슷한 사례를 찾아볼 수 있나요?"
+            - "우리 주변에서 볼 수 있는 예는?"
+          negative:
+            - "예를 들면 ~입니다" # 설명
+
+  feedback:
+    name: "피드백"
+    english: "Feedback"
+    description: "학생의 답변이나 행동에 대한 반응"
+    color: "#F59E0B"  # Amber
+
+    checklist:
+      - id: "feed_01"
+        question: "이 발화에서 학생의 답변이 정답임을 확인하고 있습니까?"
+        examples:
+          positive:
+            - "맞아요, 정확해요"
+            - "네, 그렇습니다"
+            - "정답이에요, 잘했어요"
+          negative:
+            - "맞는지 확인해볼까요?" # 질문
+
+      - id: "feed_02"
+        question: "이 발화에서 학생의 오답을 지적하고 있습니까?"
+        examples:
+          positive:
+            - "아니에요, 다시 생각해보세요"
+            - "틀렸어요"
+            - "그건 정답이 아니에요"
+          negative:
+            - "왜 틀렸을까요?" # 질문
+
+      - id: "feed_03"
+        question: "이 발화에서 부분적으로 맞는 답변을 인정하며 보완을 요구하고 있습니까?"
+        examples:
+          positive:
+            - "절반은 맞았는데, ~부분을 추가하면 완벽해요"
+            - "좋은 시작이에요, 그런데 ~도 포함해야 해요"
+            - "맞긴 한데, 더 정확하게 말하면"
+          negative:
+            - "완전히 맞아요" # 정답 피드백
+
+      - id: "feed_04"
+        question: "이 발화에서 학생의 답변을 정교화하거나 확장하고 있습니까?"
+        examples:
+          positive:
+            - "네 답변에 덧붙이면, ~라고 할 수 있어요"
+            - "좋은 답이에요. 여기에 ~를 추가하면"
+            - "맞아요, 그리고 ~라는 점도 중요해요"
+          negative:
+            - "더 자세히 설명해볼까요?" # 촉진
+
+      - id: "feed_05"
+        question: "이 발화에서 학생의 노력이나 참여를 칭찬하고 있습니까?"
+        examples:
+          positive:
+            - "잘했어요, 열심히 했네요"
+            - "좋은 시도예요"
+            - "훌륭한 답변이에요"
+          negative:
+            - "더 노력해보세요" # 촉진
+
+  facilitation:
+    name: "촉진"
+    english: "Facilitation"
+    description: "학생의 사고나 활동을 유도하고 격려하는 발화"
+    color: "#8B5CF6"  # Purple
+
+    checklist:
+      - id: "fac_01"
+        question: "이 발화에서 학생의 참여를 독려하고 있습니까?"
+        examples:
+          positive:
+            - "누가 먼저 해볼래요?"
+            - "다 같이 해봅시다"
+            - "적극적으로 참여해주세요"
+          negative:
+            - "잘 참여했어요" # 피드백
+
+      - id: "fac_02"
+        question: "이 발화에서 학생에게 힌트를 제공하고 있습니까?"
+        examples:
+          positive:
+            - "공식을 떠올려보세요"
+            - "지난 시간에 배운 내용과 연결해보면"
+            - "첫 번째 단계부터 차근차근 해봐요"
+          negative:
+            - "공식은 ~입니다" # 설명
+
+      - id: "fac_03"
+        question: "이 발화에서 더 깊이 생각하도록 유도하고 있습니까?"
+        examples:
+          positive:
+            - "왜 그럴까요? 더 생각해봐요"
+            - "다른 방법은 없을까요?"
+            - "조금 더 깊이 들어가볼까요?"
+          negative:
+            - "그 이유는 ~입니다" # 설명
+
+      - id: "fac_04"
+        question: "이 발화에서 학생 간 협력을 장려하고 있습니까?"
+        examples:
+          positive:
+            - "모둠끼리 의논해보세요"
+            - "옆 친구와 함께 풀어봐요"
+            - "서로 도와가며 진행하세요"
+          negative:
+            - "잘 협력했어요" # 피드백
+
+      - id: "fac_05"
+        question: "이 발화에서 학생에게 격려나 동기부여를 하고 있습니까?"
+        examples:
+          positive:
+            - "할 수 있어요, 해봐요"
+            - "어렵지만 도전해봅시다"
+            - "포기하지 말고 계속해보세요"
+          negative:
+            - "잘했어요" # 피드백 (결과에 대한 반응)
+
+  management:
+    name: "관리"
+    english: "Management"
+    description: "수업 운영 및 행동 관리 관련 발화"
+    color: "#EF4444"  # Red
+
+    checklist:
+      - id: "mgmt_01"
+        question: "이 발화에서 학생의 주의를 환기시키고 있습니까?"
+        examples:
+          positive:
+            - "집중해주세요"
+            - "조용히 해주세요"
+            - "여기 좀 봐요"
+          negative:
+            - "잘 집중하고 있네요" # 피드백
+
+      - id: "mgmt_02"
+        question: "이 발화에서 활동 시간이나 진도를 관리하고 있습니까?"
+        examples:
+          positive:
+            - "5분 남았어요"
+            - "시간이 부족하니 빨리 진행하세요"
+            - "다음 주제로 넘어가겠습니다"
+          negative:
+            - "시간 내에 잘 끝냈네요" # 피드백
+
+      - id: "mgmt_03"
+        question: "이 발화에서 활동 방법이나 규칙을 안내하고 있습니까?"
+        examples:
+          positive:
+            - "교과서를 펴세요"
+            - "한 줄씩 앉으세요"
+            - "모둠별로 자료를 나눠 가지세요"
+          negative:
+            - "잘 따라했어요" # 피드백
+
+      - id: "mgmt_04"
+        question: "이 발화에서 부적절한 행동을 지적하고 있습니까?"
+        examples:
+          positive:
+            - "떠들지 마세요"
+            - "스마트폰 사용하지 마세요"
+            - "그런 행동은 안 돼요"
+          negative:
+            - "왜 떠드나요?" # 질문 (수사적 질문이 아닌 경우)
+
+      - id: "mgmt_05"
+        question: "이 발화에서 수업 자료나 준비물을 확인하고 있습니까?"
+        examples:
+          positive:
+            - "교과서 가져왔나요?"
+            - "필기구 준비되었나요?"
+            - "자료 다 받았나요?"
+          negative:
+            - "자료가 뭐죠?" # 질문 (내용 관련)
+
+# 분류 규칙
+classification_rules:
+  decision_method: "independent_majority_voting"
+  num_runs: 3
+  threshold:
+    per_context: 3  # 5개 체크리스트 중 3개 이상 Yes면 해당 맥락으로 태깅
+
+  multi_label: true  # 하나의 발화가 여러 맥락을 가질 수 있음
+
+  common_combinations:
+    - ["explanation", "question"]  # 설명하면서 질문
+    - ["question", "facilitation"]  # 질문하면서 촉진
+    - ["feedback", "facilitation"]  # 피드백하면서 다음 단계 촉진
+    - ["explanation", "management"]  # 설명하면서 수업 관리
+
+  minimum_contexts: 1  # 최소 1개의 맥락은 태깅되어야 함
+
+  fallback:
+    default: "explanation"
+    reason: "명확히 분류되지 않는 경우 설명으로 간주"
+
+# 프롬프트 템플릿
+prompt_template: |
+  다음은 교사의 수업 발화입니다. 이 발화의 맥락(teaching function)을 분류하기 위한 체크리스트입니다.
+
+  **주의사항:**
+  - 하나의 발화가 여러 맥락을 동시에 가질 수 있습니다.
+  - 각 맥락에 대해 독립적으로 평가하세요.
+  - 각 질문에 대해 "Yes" 또는 "No"로만 답변하세요.
+
+  **발화 내용:**
+  "{utterance}"
+
+  **발화 맥락:**
+  - 발화 시간: {timestamp}
+  - 이전 발화: "{previous_utterance}"
+  - 다음 발화: "{next_utterance}"
+
+  **체크리스트 ({context_name}):**
+  {checklist_items}
+
+  각 질문에 대한 답변을 다음 형식으로 제공하세요:
+  {{
+    "exp_01": "Yes/No",
+    "exp_02": "Yes/No",
+    ...
+  }}
+
+  추가 설명 없이 JSON 형식으로만 답변하세요.

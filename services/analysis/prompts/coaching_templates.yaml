@@ -1,0 +1,81 @@
+# Coaching Prompt Templates
+# Templates for generating coaching feedback based on teaching analysis
+
+templates:
+  comprehensive_coaching:
+    name: "Comprehensive Teaching Coaching"
+    description: "Full coaching feedback covering all dimensions"
+    prompt_template: |
+      Analyze the following teaching session data and provide comprehensive coaching feedback.
+
+      ## Teaching Session Data
+
+      ### Time Distribution (Stage)
+      - Introduction: {intro_time}% ({intro_count} utterances)
+      - Development: {dev_time}% ({dev_count} utterances)
+      - Closing: {closing_time}% ({closing_count} utterances)
+
+      ### Context Distribution
+      - Explanation: {explanation_pct}%
+      - Question: {question_pct}%
+      - Feedback: {feedback_pct}%
+      - Facilitation: {facilitation_pct}%
+      - Management: {management_pct}%
+
+      ### Cognitive Level Distribution
+      - L1 (Recall/Understand): {l1_pct}%
+      - L2 (Apply/Analyze): {l2_pct}%
+      - L3 (Evaluate/Create): {l3_pct}%
+      - Average Cognitive Level: {avg_cognitive_level}
+
+      ### Pattern Matching
+      - Best Match: {pattern_name} ({pattern_similarity:.1%} similarity)
+      - Match Quality: {match_quality}
+      - Pattern Description: {pattern_description}
+
+      ### Key Metrics
+      {key_metrics}
+
+      ### Additional Context
+      - Total Duration: {duration} minutes
+      - Total Utterances: {total_utterances}
+      - Subject: {subject}
+      - Grade Level: {grade_level}
+
+      ## Instructions
+
+      Provide structured coaching feedback in the following JSON format:
+
+      {{
+        "overall_assessment": "Brief 2-3 sentence summary of the session's effectiveness",
+        "strengths": [
+          "Specific strength 1 with data reference",
+          "Specific strength 2 with data reference",
+          "..."
+        ],
+        "areas_for_growth": [
+          "Specific area 1 with improvement suggestion",
+          "Specific area 2 with improvement suggestion",
+          "..."
+        ],
+        "priority_actions": [
+          "Actionable step 1",
+          "Actionable step 2",
+          "Actionable step 3"
+        ],
+        "pedagogical_recommendations": {{
+          "stage_balance": "Recommendation about time distribution",
+          "questioning_strategy": "Recommendation about question types",
+          "cognitive_challenge": "Recommendation about cognitive levels",
+          "interaction_quality": "Recommendation about student engagement"
+        }},
+        "resources_and_strategies": [
+          "Resource or strategy 1",
+          "Resource or strategy 2",
+          "..."
+        ],
+        "next_session_goals": [
+          "Specific goal 1 for next session",
+          "Specific goal 2 for next session"
+        ]
+      }}

@@ -1,0 +1,282 @@
+# Webb's Depth of Knowledge (DOK) Classification Checklist
+# 인지 깊이 분류: DOK1 (회상) / DOK2 (기술/개념) / DOK3 (전략적 사고) / DOK4 (확장적 사고)
+#
+# Norman Webb's Depth of Knowledge Framework
+# 3회 실행 후 다수결 투표로 최종 결정
+
+levels:
+  DOK1:
+    name: "DOK1 - 회상 및 재현"
+    english: "DOK1 - Recall & Reproduction"
+    description: "기본적인 사실, 정보, 절차를 단순히 회상하거나 재현하는 수준"
+    color: "#93C5FD"  # Light Blue
+
+    checklist:
+      - id: "dok1_01"
+        question: "이 발화에서 단순한 사실이나 정보를 회상하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "삼각형의 내각의 합은 몇 도인가요?"
+            - "광합성의 재료는 무엇인가요?"
+            - "수도는 어디인가요?"
+          negative:
+            - "왜 내각의 합이 180도일까요?" # DOK3
+            - "광합성 원리를 설명해보세요" # DOK2
+
+      - id: "dok1_02"
+        question: "이 발화에서 기본 절차나 공식을 그대로 사용하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 공식에 숫자를 대입해보세요"
+            - "순서대로 따라 해보세요"
+            - "암기한 내용을 써보세요"
+          negative:
+            - "어떤 공식을 사용해야 할지 판단해보세요" # DOK2
+            - "이 문제에 맞는 전략을 세워보세요" # DOK3
+
+      - id: "dok1_03"
+        question: "이 발화에서 정의나 용어를 단순히 제시하고 있습니까?"
+        examples:
+          positive:
+            - "세포란 생물의 기본 단위입니다"
+            - "이것을 변수라고 부릅니다"
+            - "이 단어의 뜻은..."
+          negative:
+            - "이 개념들을 비교해보세요" # DOK2
+            - "이 용어가 왜 중요할까요?" # DOK3
+
+      - id: "dok1_04"
+        question: "이 발화에서 단순한 계산이나 측정만 요구하고 있습니까?"
+        examples:
+          positive:
+            - "2+3은 얼마인가요?"
+            - "이 길이를 자로 재보세요"
+            - "개수를 세어보세요"
+          negative:
+            - "이 데이터를 분석해보세요" # DOK2
+            - "패턴을 찾아 예측해보세요" # DOK3
+
+      - id: "dok1_05"
+        question: "이 발화에서 기초적인 목록 작성이나 나열만 요구하고 있습니까?"
+        examples:
+          positive:
+            - "재생 에너지의 종류를 나열해보세요"
+            - "알고 있는 나라 이름을 말해보세요"
+            - "준비물을 적어보세요"
+          negative:
+            - "이 항목들을 기준에 따라 분류해보세요" # DOK2
+
+  DOK2:
+    name: "DOK2 - 기술/개념"
+    english: "DOK2 - Skills & Concepts"
+    description: "개념을 이해하고 적용하며, 정보를 처리하는 수준"
+    color: "#86EFAC"  # Light Green
+
+    checklist:
+      - id: "dok2_01"
+        question: "이 발화에서 개념이나 원리를 적용하여 문제를 해결하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 공식을 사용해 문제를 풀어보세요"
+            - "배운 방법으로 이 현상을 설명해보세요"
+            - "이 원리를 실생활 예에 적용하면"
+          negative:
+            - "공식이 무엇인가요?" # DOK1
+            - "여러 방법을 비교하여 최선을 선택해보세요" # DOK3
+
+      - id: "dok2_02"
+        question: "이 발화에서 정보를 분류, 조직, 비교하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 데이터를 범주별로 분류해보세요"
+            - "두 개념의 공통점과 차이점은?"
+            - "이 정보들을 표로 정리하면"
+          negative:
+            - "이것의 이름은 무엇인가요?" # DOK1
+            - "왜 이렇게 분류하는 것이 효과적일까요?" # DOK3
+
+      - id: "dok2_03"
+        question: "이 발화에서 관계나 패턴을 파악하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 수열의 규칙을 찾아보세요"
+            - "원인과 결과의 관계를 설명해보세요"
+            - "이 그래프에서 추세를 읽어보세요"
+          negative:
+            - "이 숫자들을 나열해보세요" # DOK1
+            - "이 패턴이 왜 나타나는지 논리적으로 설명해보세요" # DOK3
+
+      - id: "dok2_04"
+        question: "이 발화에서 예시나 모델을 사용하여 설명하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 개념을 예를 들어 설명해보세요"
+            - "모형을 사용해 과정을 보여주세요"
+            - "도표로 나타내면"
+          negative:
+            - "예시를 나열해보세요" # DOK1
+            - "여러 모델을 비교하고 평가해보세요" # DOK3
+
+      - id: "dok2_05"
+        question: "이 발화에서 정보를 요약하거나 해석하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 단락의 주요 내용을 요약하면"
+            - "이 데이터가 의미하는 바는"
+            - "이 결과를 해석해보세요"
+          negative:
+            - "이 문장을 그대로 읽어보세요" # DOK1
+            - "이 결과를 바탕으로 새로운 가설을 세워보세요" # DOK4
+
+  DOK3:
+    name: "DOK3 - 전략적 사고"
+    english: "DOK3 - Strategic Thinking"
+    description: "추론, 계획, 복잡한 사고를 통해 문제를 해결하는 수준"
+    color: "#FCD34D"  # Yellow
+
+    checklist:
+      - id: "dok3_01"
+        question: "이 발화에서 추론이나 논리적 사고를 요구하고 있습니까?"
+        examples:
+          positive:
+            - "왜 이런 결과가 나왔을까요?"
+            - "이 결론에 도달한 근거를 설명해보세요"
+            - "이것이 맞는지 논리적으로 증명해보세요"
+          negative:
+            - "결과가 무엇인가요?" # DOK1
+            - "결과를 표로 정리해보세요" # DOK2
+
+      - id: "dok3_02"
+        question: "이 발화에서 전략을 수립하거나 계획을 세우도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 문제를 어떻게 접근하면 좋을까요?"
+            - "해결 전략을 세워보세요"
+            - "어떤 순서로 해결하는 것이 효율적일까요?"
+          negative:
+            - "이 절차를 따라하세요" # DOK1
+            - "여러 전략을 장기적으로 실험해보세요" # DOK4
+
+      - id: "dok3_03"
+        question: "이 발화에서 여러 개념을 통합하거나 연결하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 개념들이 어떻게 연결되나요?"
+            - "배운 내용들을 종합하면"
+            - "이 원리들의 공통 기반은 무엇일까요?"
+          negative:
+            - "이 개념의 정의는?" # DOK1
+            - "이 개념들을 비교해보세요" # DOK2
+
+      - id: "dok3_04"
+        question: "이 발화에서 비판적으로 분석하거나 평가하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 주장의 타당성을 평가해보세요"
+            - "이 방법의 장단점은 무엇인가요?"
+            - "이 해결책이 최선인지 판단해보세요"
+          negative:
+            - "이 방법을 따라하세요" # DOK1
+            - "두 방법을 비교해보세요" # DOK2
+
+      - id: "dok3_05"
+        question: "이 발화에서 가설을 세우거나 예측하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이런 조건이면 어떻게 될까요?"
+            - "다음에 무엇이 일어날지 예측해보세요"
+            - "가설을 세우고 근거를 제시해보세요"
+          negative:
+            - "결과가 무엇이었나요?" # DOK1
+            - "장기 프로젝트로 가설을 검증해보세요" # DOK4
+
+  DOK4:
+    name: "DOK4 - 확장적 사고"
+    english: "DOK4 - Extended Thinking"
+    description: "복잡한 탐구와 장기적인 프로젝트를 수행하는 수준"
+    color: "#FB923C"  # Orange
+
+    checklist:
+      - id: "dok4_01"
+        question: "이 발화에서 복잡한 장기 프로젝트나 탐구를 요구하고 있습니까?"
+        examples:
+          positive:
+            - "이 주제로 연구 프로젝트를 설계해보세요"
+            - "한 학기 동안 탐구할 질문을 만들어보세요"
+            - "실험을 설계하고 반복적으로 수행해보세요"
+          negative:
+            - "이 실험 절차를 따라하세요" # DOK1
+            - "실험 결과를 분석해보세요" # DOK2
+
+      - id: "dok4_02"
+        question: "이 발화에서 여러 관점이나 원천의 정보를 종합하도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "여러 자료를 조사하여 종합 보고서를 작성하세요"
+            - "다양한 관점에서 이 문제를 분석해보세요"
+            - "여러 영역의 지식을 통합하여 해결책을 제시하세요"
+          negative:
+            - "이 자료를 요약해보세요" # DOK2
+            - "두 관점을 비교해보세요" # DOK3
+
+      - id: "dok4_03"
+        question: "이 발화에서 창의적이고 독창적인 산출물을 만들도록 요구하고 있습니까?"
+        examples:
+          positive:
+            - "새로운 해결 방법을 개발해보세요"
+            - "독창적인 작품을 창작해보세요"
+            - "혁신적인 아이디어를 제안하고 구현해보세요"
+          negative:
+            - "이 작품을 따라 만들어보세요" # DOK1
+            - "이 방법을 개선할 점을 찾아보세요" # DOK3
+
+      - id: "dok4_04"
+        question: "이 발화에서 반복적인 수정과 개선 과정을 요구하고 있습니까?"
+        examples:
+          positive:
+            - "계속 개선하면서 최적의 결과를 찾아보세요"
+            - "피드백을 받아 반복적으로 수정해보세요"
+            - "여러 시도를 통해 점진적으로 발전시켜보세요"
+          negative:
+            - "한 번 수정해보세요" # DOK2
+            - "개선 방안을 제안해보세요" # DOK3
+
+      - id: "dok4_05"
+        question: "이 발화에서 실세계 문제에 대한 복잡한 적용을 요구하고 있습니까?"
+        examples:
+          positive:
+            - "실제 지역 사회 문제를 해결할 방안을 개발하세요"
+            - "실생활 복잡한 상황에 이론을 적용해보세요"
+            - "사회적 이슈를 다각도로 분석하고 해결책을 제시하세요"
+          negative:
+            - "이 원리를 예시에 적용해보세요" # DOK2
+            - "이 문제의 해결 전략을 세워보세요" # DOK3
+
+classification_rules:
+  threshold:
+    DOK1: 3  # 5개 중 3개 이상 Yes
+    DOK2: 3  # 5개 중 3개 이상 Yes
+    DOK3: 3  # 5개 중 3개 이상 Yes
+    DOK4: 3  # 5개 중 3개 이상 Yes
+
+  hierarchy:
+    priority: ["DOK4", "DOK3", "DOK2", "DOK1"]  # 높은 수준 우선
+    reason: "더 높은 인지 깊이가 확인되면 그것으로 분류"
+
+  fallback:
+    default: "DOK1"
+    reason: "명확한 판단이 어려울 경우 기본 수준으로 분류"
+
+prompt_template: |
+  다음 교사 발화를 Webb's Depth of Knowledge (DOK) {level_name} 관점에서 분석하세요.
+
+  **발화 내용**: {utterance}
+  **타임스탬프**: {timestamp}
+  **이전 발화**: {previous_utterance}
+  **다음 발화**: {next_utterance}
+
+  **분석 기준**: {level_name}
+  {checklist_items}
+
+  각 항목에 대해 Yes 또는 No로 답하세요.
+  전후 맥락을 고려하되, 발화 자체의 특성을 중심으로 판단하세요.

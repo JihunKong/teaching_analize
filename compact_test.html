@@ -1,0 +1,571 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TVAS 교수 분석 보고서</title>
+    <link rel="stylesheet" href="/static/design_system/index.css">
+    <style>
+        /* Additional page-specific styles */
+        .report-header {
+            background: var(--white);
+            border-bottom: var(--border-thick) solid var(--primary-700);
+            padding: var(--space-3-compact);
+            margin-bottom: var(--space-4-compact);
+        }
+
+        .report-header__title {
+            font-size: 1.375rem;
+            font-weight: var(--weight-bold);
+            color: var(--primary-900);
+            margin-bottom: var(--space-1);
+        }
+
+        .report-header__meta {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+        }
+
+        /* Compact spacing overrides */
+        :root {
+            --space-3-compact: 1rem;      /* 24px → 16px */
+            --space-4-compact: 1.5rem;    /* 32px → 24px */
+            --space-6-compact: 2rem;      /* 48px → 32px */
+        }
+
+        /* Two-column master layout */
+        .two-column-layout {
+            display: grid;
+            grid-template-columns: 60% 38%;
+            gap: 2%;
+            margin-top: var(--space-4-compact);
+            align-items: start;
+        }
+
+        .two-column-layout__left {
+            /* Main content area - charts and analysis */
+        }
+
+        .two-column-layout__right {
+            /* Sidebar - profile, strengths, improvements, recommendations */
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            margin-bottom: var(--space-3-compact);
+        }
+
+        .sidebar-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: var(--space-3-compact);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 12px;
+        }
+
+        /* Chart Container Centering */
+        .chart-container {
+            position: relative;
+            margin: 20px auto;
+            max-width: 700px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Section and card spacing */
+        .section {
+            margin-bottom: var(--space-4-compact);
+        }
+
+        .section-header {
+            margin-bottom: var(--space-3-compact);
+        }
+
+        .section-title {
+            font-size: 1.125rem;  /* 20px → 18px */
+        }
+
+        @media (max-width: 1200px) {
+            .two-column-layout {
+                grid-template-columns: 1fr;
+                gap: var(--space-4);
+            }
+
+            .two-column-layout__right {
+                position: static;
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                max-width: 100%;
+                margin: 20px auto;
+                padding: 15px;
+            }
+        }
+    </style>
+
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="report-header">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="report-header__title">TVAS 교수 분석 보고서</h1>
+                    <div class="report-header__meta">
+                        분석 ID: N/A | 생성일: 2025년 11월 16일 10:07
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-muted">교사 발화 분석 시스템</div>
+                    <div class="text-xs text-muted">전문 진단 보고서</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero Summary -->
+        
+        <div class="hero-summary">
+            <div class="hero-summary__title">전체 교수 효과성 점수</div>
+            <div class="hero-summary__score">
+                75<span class="hero-summary__score-max">/100</span>
+            </div>
+            <div class="hero-summary__status-bar">
+                <div class="hero-summary__status-fill score-card__status-fill--good"
+                     style="width: 74.93333333333334%;"></div>
+            </div>
+            <div class="hero-summary__percentile">
+                상위 50% (양호)
+            </div>
+            <div class="hero-summary__profile">
+                <div class="hero-summary__profile-label">교수 유형</div>
+                <div class="hero-summary__profile-type">직접 교수법 (Direct Instruction)</div>
+            </div>
+        </div>
+        
+
+        <!-- Two-Column Layout -->
+        <div class="two-column-layout">
+            <!-- Left Column: Charts and Analysis -->
+            <div class="two-column-layout__left">
+
+        <!-- Core Metrics (3-column) -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">핵심 지표</h2>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                
+        <div class="score-card score-card--good">
+            <div class="score-card__label">전개 단계 균형</div>
+            <div class="score-card__value">72.3</div>
+            <div class="score-card__status-bar">
+                <div class="score-card__status-fill score-card__status-fill--good"
+                     style="width: 72.3%;"></div>
+            </div>
+        </div>
+        
+        <div class="score-card score-card--needs-improvement">
+            <div class="score-card__label">맥락 다양성</div>
+            <div class="score-card__value">32.0</div>
+            <div class="score-card__status-bar">
+                <div class="score-card__status-fill score-card__status-fill--needs-improvement"
+                     style="width: 32.0%;"></div>
+            </div>
+        </div>
+        
+        <div class="score-card score-card--needs-improvement">
+            <div class="score-card__label">평균 인지 수준</div>
+            <div class="score-card__value">51.0</div>
+            <div class="score-card__status-bar">
+                <div class="score-card__status-fill score-card__status-fill--needs-improvement"
+                     style="width: 51.0%;"></div>
+            </div>
+        </div>
+        
+            </div>
+        </section>
+
+        <!-- Detailed Metrics Analysis -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">상세 지표 분석</h2>
+                <p class="section-subtitle">전체 15개 지표의 종합 평가</p>
+            </div>
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div>
+                    <div class="subsection-header">
+                        <span class="subsection-header__icon">📊</span>
+                        <h3 class="subsection-header__title">주요 지표 레이더 차트</h3>
+                    </div>
+                    
+        <div class="chart-container" style="height: 280px;">
+            <canvas id="metricsRadarChart"></canvas>
+        </div>
+        <script>
+            (function() {
+                const ctx = document.getElementById('metricsRadarChart').getContext('2d');
+                new Chart(ctx, {"type": "radar", "data": {"labels": ["전개 단계", "맥락 다양성", "인지 수준", "질문 비율", "피드백", "고차원 사고", "인지 진행"], "datasets": [{"label": "현재 점수", "data": [72.3, 32.0, 51.0, 74.0, 76.0, 65.5, 99.0], "backgroundColor": "rgba(102, 126, 234, 0.2)", "borderColor": "rgb(102, 126, 234)", "borderWidth": 2, "pointBackgroundColor": "rgb(102, 126, 234)", "pointBorderColor": "#fff", "pointHoverBackgroundColor": "#fff", "pointHoverBorderColor": "rgb(102, 126, 234)"}]}, "options": {"responsive": true, "maintainAspectRatio": false, "plugins": {"legend": {"display": true, "position": "top"}}, "scales": {"r": {"beginAtZero": true, "max": 100, "ticks": {"stepSize": 20}}}}});
+            })();
+        </script>
+        
+                </div>
+                <div>
+                    <div class="subsection-header">
+                        <span class="subsection-header__icon">📈</span>
+                        <h3 class="subsection-header__title">전체 지표 점수</h3>
+                    </div>
+                    
+        <div class="chart-container" style="height: 400px;">
+            <canvas id="detailedMetricsBarChart"></canvas>
+        </div>
+        <script>
+            (function() {
+                const ctx = document.getElementById('detailedMetricsBarChart').getContext('2d');
+                new Chart(ctx, {"type": "bar", "data": {"labels": ["발화 밀도", "인지 수준 진행", "평균 대기 시간", "확장 대화 비율", "전개 질문 깊이", "도입 단계 비율", "정리 단계 비율", "피드백 비율", "질문 비율", "IRF 패턴 비율", "전개 단계 비율", "고차원 사고 비율", "설명 비율", "평균 인지 수준", "맥락 다양성"], "datasets": [{"label": "점수", "data": [99.1, 99.0, 96.0, 92.8, 80.0, 76.3, 76.0, 76.0, 74.0, 74.0, 72.3, 65.5, 60.0, 51.0, 32.0], "backgroundColor": ["rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(245, 158, 11, 0.8)", "rgba(245, 158, 11, 0.8)", "rgba(239, 68, 68, 0.8)", "rgba(239, 68, 68, 0.8)"], "borderColor": ["rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(245, 158, 11, 0.8)", "rgba(245, 158, 11, 0.8)", "rgba(239, 68, 68, 0.8)", "rgba(239, 68, 68, 0.8)"], "borderWidth": 1}]}, "options": {"responsive": true, "maintainAspectRatio": false, "plugins": {"legend": {"display": false}}, "indexAxis": "y", "scales": {"x": {"beginAtZero": true, "max": 100}}}});
+            })();
+        </script>
+        
+                </div>
+            </div>
+        </section>
+
+        <!-- Distribution Analysis -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">수업 구조 분석</h2>
+                <p class="section-subtitle">수업 단계, 교수 기능, 인지 수준 분포</p>
+            </div>
+            <div class="grid grid-cols-3 gap-6">
+                <div>
+                    <div class="subsection-header">
+                        <span class="subsection-header__icon">⏱️</span>
+                        <h3 class="subsection-header__title">수업 단계 분포</h3>
+                    </div>
+                    
+        <div class="chart-container" style="height: 220px;">
+            <canvas id="stageDistChart"></canvas>
+        </div>
+        <script>
+            (function() {
+                const ctx = document.getElementById('stageDistChart').getContext('2d');
+                new Chart(ctx, {"type": "doughnut", "data": {"labels": ["도입", "전개", "정리"], "datasets": [{"data": [1, 132, 0], "backgroundColor": ["rgba(102, 126, 234, 0.8)", "rgba(118, 75, 162, 0.8)", "rgba(59, 130, 246, 0.8)"], "borderColor": "#fff", "borderWidth": 2}]}, "options": {"responsive": true, "maintainAspectRatio": false, "plugins": {"legend": {"position": "bottom"}}}});
+            })();
+        </script>
+        
+                    <div class="metric-stats-grid mt-3">
+                        <div class="metric-stat-pill metric-stat-pill--primary">
+                            <span class="metric-stat-pill__label">도입</span>
+                            <span class="metric-stat-pill__value">1.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 1%;"></div>
+                        </div>
+                        <div class="metric-stat-pill metric-stat-pill--secondary">
+                            <span class="metric-stat-pill__label">전개</span>
+                            <span class="metric-stat-pill__value">132.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 132%;"></div>
+                        </div>
+                        <div class="metric-stat-pill metric-stat-pill--info">
+                            <span class="metric-stat-pill__label">정리</span>
+                            <span class="metric-stat-pill__value">0.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="subsection-header">
+                        <span class="subsection-header__icon">🎯</span>
+                        <h3 class="subsection-header__title">교수 기능 분포</h3>
+                    </div>
+                    
+        <div class="chart-container" style="height: 220px;">
+            <canvas id="contextDistChart"></canvas>
+        </div>
+        <script>
+            (function() {
+                const ctx = document.getElementById('contextDistChart').getContext('2d');
+                new Chart(ctx, {"type": "bar", "data": {"labels": ["설명", "질문", "피드백", "촉진", "관리"], "datasets": [{"label": "비율 (%)", "data": [133, 0, 0, 0, 0], "backgroundColor": "rgba(102, 126, 234, 0.8)", "borderColor": "rgb(102, 126, 234)", "borderWidth": 1}]}, "options": {"responsive": true, "maintainAspectRatio": false, "plugins": {"legend": {"display": false}}, "scales": {"y": {"beginAtZero": true, "max": 100}}}});
+            })();
+        </script>
+        
+                    <div class="metric-stats-grid mt-3">
+                        <div class="metric-stat-pill metric-stat-pill--primary">
+                            <span class="metric-stat-pill__label">설명</span>
+                            <span class="metric-stat-pill__value">133.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 133%;"></div>
+                        </div>
+                        <div class="metric-stat-pill metric-stat-pill--success">
+                            <span class="metric-stat-pill__label">질문</span>
+                            <span class="metric-stat-pill__value">0.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="metric-stat-pill metric-stat-pill--warning">
+                            <span class="metric-stat-pill__label">피드백</span>
+                            <span class="metric-stat-pill__value">0.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="subsection-header">
+                        <span class="subsection-header__icon">🧠</span>
+                        <h3 class="subsection-header__title">인지 수준 분포</h3>
+                    </div>
+                    
+        <div class="chart-container" style="height: 120px;">
+            <canvas id="levelDistChart"></canvas>
+        </div>
+        <script>
+            (function() {
+                const ctx = document.getElementById('levelDistChart').getContext('2d');
+                new Chart(ctx, {"type": "bar", "data": {"labels": ["인지 수준 분포"], "datasets": [{"label": "L1 (기억/이해)", "data": [128], "backgroundColor": "rgba(59, 130, 246, 0.8)"}, {"label": "L2 (적용/분석)", "data": [0], "backgroundColor": "rgba(16, 185, 129, 0.8)"}, {"label": "L3 (평가/창조)", "data": [5], "backgroundColor": "rgba(245, 158, 11, 0.8)"}]}, "options": {"responsive": true, "maintainAspectRatio": false, "plugins": {"legend": {"display": true, "position": "top"}}, "indexAxis": "y", "scales": {"x": {"stacked": true, "max": 100}, "y": {"stacked": true}}}});
+            })();
+        </script>
+        
+                    <div class="metric-stats-grid mt-3">
+                        <div class="metric-stat-pill metric-stat-pill--info">
+                            <span class="metric-stat-pill__label">L1 (기억/이해)</span>
+                            <span class="metric-stat-pill__value">128.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 128%;"></div>
+                        </div>
+                        <div class="metric-stat-pill metric-stat-pill--success">
+                            <span class="metric-stat-pill__label">L2 (적용/분석)</span>
+                            <span class="metric-stat-pill__value">0.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="metric-stat-pill metric-stat-pill--warning">
+                            <span class="metric-stat-pill__label">L3 (평가/창조)</span>
+                            <span class="metric-stat-pill__value">5.0%</span>
+                            <div class="metric-stat-pill__bar" style="width: 5%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pattern Matching -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">교수 패턴 분석</h2>
+                <p class="section-subtitle">이상적 교수 패턴과의 유사도 비교</p>
+            </div>
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <div class="subsection-header">
+                        <span class="subsection-header__icon">🔍</span>
+                        <h3 class="subsection-header__title">패턴 유사도 분석</h3>
+                    </div>
+                    
+        <div class="chart-container" style="height: 220px;">
+            <canvas id="patternSimilarityChart"></canvas>
+        </div>
+        <script>
+            (function() {
+                const ctx = document.getElementById('patternSimilarityChart').getContext('2d');
+                new Chart(ctx, {"type": "bar", "data": {"labels": ["직접 교수법 (Direct Instruction)", "비계 설정 교수법 (Scaffolding)", "균형 대화형 수업 (Balanced Dialogic Teaching)", "탐구 기반 학습 (Inquiry-Based Learning)"], "datasets": [{"label": "유사도 (%)", "data": [71.0939329322289, 38.58352622850388, 28.099346402097847, 10.285440378928397], "backgroundColor": ["rgba(102, 126, 234, 0.8)", "rgba(156, 163, 175, 0.6)", "rgba(156, 163, 175, 0.6)", "rgba(156, 163, 175, 0.6)"], "borderColor": ["rgba(102, 126, 234, 0.8)", "rgba(156, 163, 175, 0.6)", "rgba(156, 163, 175, 0.6)", "rgba(156, 163, 175, 0.6)"], "borderWidth": 1}]}, "options": {"responsive": true, "maintainAspectRatio": false, "plugins": {"legend": {"display": false}}, "scales": {"y": {"beginAtZero": true, "max": 100}}}});
+            })();
+        </script>
+        
+                </div>
+                <div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold text-primary-700 mb-2">
+                            가장 유사한 패턴: 직접 교수법 (Direct Instruction)
+                        </h3>
+                        <p class="text-gray-700 mb-3">
+                            교사 중심의 체계적 설명과 명확한 개념 전달에 초점을 둔 교수법
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <div class="status-bar" style="width: 100%; height: 12px; border-radius: 6px;">
+                                <div class="status-bar__fill" style="width: 71%; background: var(--primary-500);"></div>
+                            </div>
+                            <span class="text-2xl font-mono font-bold text-primary-700">71%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+            </div>
+            <!-- End Left Column -->
+
+            <!-- Right Column: Profile, Strengths, Improvements, Recommendations -->
+            <div class="two-column-layout__right">
+
+        <!-- Strengths & Improvements (Now in Sidebar) -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">강점 및 개선 영역</h2>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-success mb-3">강점</h3>
+                    
+        <div class="insight-card insight-card--strength">
+            <div class="insight-card__header">
+                <div class="insight-card__icon insight-card__icon--strength">✓</div>
+                <h4 class="insight-card__title">강점 1</h4>
+            </div>
+            <p class="insight-card__description">High utterance density (2.96, optimal) and cognitive progression score (99.0/100), indicating efficient and logically structured content delivery</p>
+            
+        </div>
+        
+        <div class="insight-card insight-card--strength">
+            <div class="insight-card__header">
+                <div class="insight-card__icon insight-card__icon--strength">✓</div>
+                <h4 class="insight-card__title">강점 2</h4>
+            </div>
+            <p class="insight-card__description">Extended dialogue ratio (0.34, optimal) and average wait time (5.00s, optimal) suggest potential for deeper engagement if interactive elements are added</p>
+            
+        </div>
+        
+        <div class="insight-card insight-card--strength">
+            <div class="insight-card__header">
+                <div class="insight-card__icon insight-card__icon--strength">✓</div>
+                <h4 class="insight-card__title">강점 3</h4>
+            </div>
+            <p class="insight-card__description">Strong alignment with direct instruction model (71.1% similarity) with good scores in foundational metrics (intro 76.3/100, dev 72.3/100)</p>
+            
+        </div>
+        
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-warning mb-3">개선 영역</h3>
+                    
+        <div class="insight-card insight-card--improvement">
+            <div class="insight-card__header">
+                <div class="insight-card__icon insight-card__icon--improvement">⚠</div>
+                <h4 class="insight-card__title">개선 영역 1</h4>
+            </div>
+            <p class="insight-card__description">Zero student questioning (0.00 ratio) and feedback exchanges limit formative assessment opportunities and active learning</p>
+            
+        </div>
+        
+        <div class="insight-card insight-card--improvement">
+            <div class="insight-card__header">
+                <div class="insight-card__icon insight-card__icon--improvement">⚠</div>
+                <h4 class="insight-card__title">개선 영역 2</h4>
+            </div>
+            <p class="insight-card__description">Cognitive level distribution heavily weighted to L1 (128%) with negligible L2 (0%) and minimal L3 (5%), creating low intellectual challenge</p>
+            
+        </div>
+        
+        <div class="insight-card insight-card--improvement">
+            <div class="insight-card__header">
+                <div class="insight-card__icon insight-card__icon--improvement">⚠</div>
+                <h4 class="insight-card__title">개선 영역 3</h4>
+            </div>
+            <p class="insight-card__description">Complete absence of closing activities (0%) misses critical consolidation and metacognitive reflection opportunities</p>
+            
+        </div>
+        
+                </div>
+            </div>
+        </section>
+
+        <!-- Coaching Recommendations -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">우선순위 코칭 추천</h2>
+            </div>
+            
+        <div class="recommendation-card">
+            <div class="recommendation-card__header">
+                <div class="recommendation-card__number">1</div>
+                <h4 class="recommendation-card__title">Design a 3-part lesson structure with 5% intro, 85% development, 10% closing to create balanced pacing</h4>
+                <span class="recommendation-badge recommendation-badge--high">
+                    <span class="recommendation-badge__icon">●</span>
+                    HIGH
+                </span>
+            </div>
+            <div class="recommendation-card__content">
+                <p class="recommendation-card__description"></p>
+                
+            </div>
+        </div>
+        
+        <div class="recommendation-card">
+            <div class="recommendation-card__header">
+                <div class="recommendation-card__number">2</div>
+                <h4 class="recommendation-card__title">Embed 3-5 higher-order questions per session using Bloom's Taxonomy (e.g., 'Analyze how X concept connects to Y real-world scenario')</h4>
+                <span class="recommendation-badge recommendation-badge--high">
+                    <span class="recommendation-badge__icon">●</span>
+                    HIGH
+                </span>
+            </div>
+            <div class="recommendation-card__content">
+                <p class="recommendation-card__description"></p>
+                
+            </div>
+        </div>
+        
+        <div class="recommendation-card">
+            <div class="recommendation-card__header">
+                <div class="recommendation-card__number">3</div>
+                <h4 class="recommendation-card__title">Implement think-pair-share activities during development to create low-stakes interaction opportunities</h4>
+                <span class="recommendation-badge recommendation-badge--medium">
+                    <span class="recommendation-badge__icon">●</span>
+                    MEDIUM
+                </span>
+            </div>
+            <div class="recommendation-card__content">
+                <p class="recommendation-card__description"></p>
+                
+            </div>
+        </div>
+        
+        </section>
+
+            </div>
+            <!-- End Right Column -->
+
+        </div>
+        <!-- End Two-Column Layout -->
+
+        <!-- Overall Assessment -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">종합 평가</h2>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card__icon-wrapper">
+                    <div class="summary-card__icon">📋</div>
+                </div>
+                <div class="summary-card__content">
+                    <p class="summary-card__text">
+                        The session demonstrated strong explanatory clarity and efficient content delivery but lacked opportunities for student interaction, cognitive engagement, and structured progression. While direct instruction was effectively implemented, the absence of questioning, feedback, and higher-order thinking limited student ownership of learning.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="report-footer">
+            <div class="report-footer__card">
+                <div class="report-footer__icon">🎓</div>
+                <p class="report-footer__text">
+                    이 보고서는 TVAS (Teacher Voice Analysis System)에 의해 자동 생성되었습니다.
+                </p>
+                <p class="report-footer__contact">
+                    질문이나 피드백: <a href="mailto:support@tvas.ai" class="report-footer__link">support@tvas.ai</a>
+                </p>
+                <div class="report-footer__timestamp">
+                    생성 시각: 2025년 11월 16일 10:07 | 분석 ID: N/A
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
+        

@@ -1,0 +1,257 @@
+# CBIL-Specific Coaching Templates
+# Templates for generating coaching feedback based on CBIL 7-stage scores
+
+templates:
+  cbil_comprehensive_coaching:
+    name: "CBIL 통합 코칭 피드백"
+    description: "CBIL 7단계 점수와 Module 3 평가를 통합한 종합 코칭"
+    prompt_template: |
+      CBIL(개념기반 탐구학습) 프레임워크와 3D 매트릭스 분석 결과를 바탕으로
+      교사에게 실행 가능한 코칭 피드백을 제공하세요.
+
+      ## CBIL 7단계 점수
+
+      {cbil_scores_summary}
+
+      **총점**: {cbil_total_score}/{cbil_max_score}점 ({cbil_percentage:.1f}%)
+
+      ## 3D 매트릭스 분석
+
+      ### 시간 분포 (Stage)
+      - Introduction: {intro_pct}%
+      - Development: {dev_pct}%
+      - Closing: {closing_pct}%
+
+      ### 맥락 분포 (Context)
+      - Explanation: {explanation_pct}%
+      - Question: {question_pct}%
+      - Feedback: {feedback_pct}%
+      - Facilitation: {facilitation_pct}%
+      - Management: {management_pct}%
+
+      ### 인지 수준 (Level)
+      - L1 (기억/이해): {l1_pct}%
+      - L2 (적용/분석): {l2_pct}%
+      - L3 (종합/평가): {l3_pct}%
+
+      ## 패턴 매칭
+
+      - 최적 패턴: {pattern_name}
+      - 유사도: {pattern_similarity:.1%}
+      - CBIL 정렬 점수: {cbil_alignment:.1%}
+
+      ## CBIL-Matrix 연관성
+
+      {cbil_matrix_correlation}
+
+      ## 지시사항
+
+      위 데이터를 바탕으로 다음 형식의 JSON 응답을 생성하세요:
+
+      {{
+        "overall_assessment": "CBIL과 3D 매트릭스 분석을 통합한 전체 평가 (2-3문장)",
+        "cbil_strengths": [
+          "CBIL 관점에서의 강점 1 (구체적 점수 참조)",
+          "CBIL 관점에서의 강점 2"
+        ],
+        "cbil_areas_for_growth": [
+          "개선이 필요한 CBIL 단계 1 (점수 + 이유)",
+          "개선이 필요한 CBIL 단계 2"
+        ],
+        "integrated_insights": [
+          "CBIL 단계와 3D 매트릭스 간 연관성 분석 1",
+          "CBIL 단계와 3D 매트릭스 간 연관성 분석 2"
+        ],
+        "priority_actions": [
+          "CBIL과 Module 3 통합 관점의 우선 조치 1",
+          "CBIL과 Module 3 통합 관점의 우선 조치 2",
+          "CBIL과 Module 3 통합 관점의 우선 조치 3"
+        ],
+        "stage_specific_recommendations": {{
+          "weak_stages": [
+            {{
+              "stage": "CBIL 단계명",
+              "current_score": X,
+              "recommendation": "구체적 개선 방안"
+            }}
+          ]
+        }},
+        "next_session_focus": [
+          "다음 수업에서 집중할 CBIL 단계",
+          "다음 수업에서 시도할 구체적 전략"
+        ]
+      }}
+
+# Stage-Specific Feedback Templates
+stage_templates:
+  engage_low:
+    condition: "score < 2"
+    feedback_kr: |
+      **Engage (흥미 유도 및 연결) 단계 강화 필요**
+
+      현재 점수가 낮습니다. 학생들의 흥미와 사전 지식을 활성화하는 것이 부족합니다.
+
+      개선 방안:
+      - 실생활과 연계된 질문이나 상황으로 수업 시작
+      - 학생들의 경험이나 생각을 공유할 기회 제공
+      - 개념에 대한 호기심을 유발하는 활동 추가
+      - 이전 학습과의 연결고리 명시적 제시
+
+  engage_optimal:
+    condition: "score >= 2"
+    feedback_kr: |
+      **Engage (흥미 유도 및 연결) 단계 우수**
+
+      학생들의 흥미를 효과적으로 유도하고 사전 지식을 활성화했습니다.
+      현재의 우수한 접근을 유지하세요.
+
+  focus_low:
+    condition: "score < 2"
+    feedback_kr: |
+      **Focus (탐구 방향 설정) 단계 강화 필요**
+
+      탐구 방향이 명확하지 않아 학습이 산만해질 수 있습니다.
+
+      개선 방안:
+      - 명확한 탐구 질문을 학생들과 함께 설정
+      - 학습 목표를 학생 관점에서 구체화
+      - "오늘 우리가 알아낼 것은..." 형식으로 방향 제시
+      - 탐구 과정의 단계를 미리 안내
+
+  focus_optimal:
+    condition: "score >= 2"
+    feedback_kr: |
+      **Focus (탐구 방향 설정) 단계 우수**
+
+      탐구 방향이 명확하게 설정되어 효과적인 학습이 가능합니다.
+
+  investigate_low:
+    condition: "score < 2"
+    feedback_kr: |
+      **Investigate (자료 탐색 및 개념 형성) 단계 강화 필요**
+
+      학생들이 자료를 직접 탐색하고 개념을 형성할 기회가 부족합니다.
+
+      개선 방안:
+      - 학생 주도의 자료 탐색 활동 시간 확보
+      - 개방형 질문으로 사고 과정 촉진
+      - 다양한 자료와 관점 제공
+      - 관찰, 실험, 토론 등 활동적 탐구 기회 증가
+      - 학생들이 스스로 패턴을 발견하도록 안내
+
+  investigate_optimal:
+    condition: "score >= 2"
+    feedback_kr: |
+      **Investigate (자료 탐색 및 개념 형성) 단계 우수**
+
+      학생들에게 충분한 탐색 기회를 제공하고 개념 형성을 잘 지원했습니다.
+
+  organize_low:
+    condition: "score < 2"
+    feedback_kr: |
+      **Organize (증거 조직화) 단계 강화 필요**
+
+      수집한 정보나 증거를 정리하고 조직화하는 과정이 부족합니다.
+
+      개선 방안:
+      - 증거를 분류하고 정리하는 활동 추가
+      - 그래프, 표, 다이어그램 등 시각화 도구 활용
+      - 패턴과 관계를 찾도록 안내하는 질문 제공
+      - 정보를 비교, 대조, 연결하는 기회 제공
+
+  organize_optimal:
+    condition: "score >= 1"
+    feedback_kr: |
+      **Organize (증거 조직화) 단계 양호**
+
+      증거와 정보를 적절히 조직화하고 있습니다.
+
+  generalize_low:
+    condition: "score < 2"
+    feedback_kr: |
+      **Generalize (일반화) 단계 강화 필요**
+
+      개별 사례에서 일반 원리나 개념으로 확장하는 과정이 부족합니다.
+
+      개선 방안:
+      - "항상 그럴까?", "다른 경우에도 적용될까?" 질문
+      - 학생들이 자신의 말로 개념 정의하기
+      - 여러 사례의 공통점 찾기 활동
+      - 규칙이나 원리를 언어화하도록 지원
+
+  generalize_optimal:
+    condition: "score >= 2"
+    feedback_kr: |
+      **Generalize (일반화) 단계 우수**
+
+      개별 사례에서 일반 원리로의 확장이 효과적으로 이루어졌습니다.
+
+  transfer_low:
+    condition: "score < 1"
+    feedback_kr: |
+      **Transfer (전이) 단계 강화 필요**
+
+      학습한 내용을 새로운 상황에 적용하는 기회가 부족합니다.
+
+      개선 방안:
+      - 새로운 문제나 상황에 적용하는 과제 제공
+      - 다른 교과나 실생활과의 연결 탐색
+      - "이것을 어디에 사용할 수 있을까?" 질문
+      - 창의적 문제해결 활동 추가
+
+  transfer_acceptable:
+    condition: "score >= 1"
+    feedback_kr: |
+      **Transfer (전이) 단계 적절**
+
+      학습 내용의 전이 활동이 적절히 포함되어 있습니다.
+
+  reflect_low:
+    condition: "score < 1"
+    feedback_kr: |
+      **Reflect (성찰) 단계 강화 필요**
+
+      학습 과정과 결과를 되돌아보는 성찰 시간이 부족합니다.
+
+      개선 방안:
+      - 학습 과정을 되돌아보는 시간 충분히 확보
+      - "무엇을 배웠나?", "어떻게 배웠나?" 메타인지 질문
+      - 어려웠던 점과 해결 전략 공유
+      - 자신의 학습 방법에 대한 인식 촉진
+
+  reflect_acceptable:
+    condition: "score >= 1"
+    feedback_kr: |
+      **Reflect (성찰) 단계 적절**
+
+      학습에 대한 성찰 기회가 적절히 제공되고 있습니다.
+
+# Integration Patterns
+integration_patterns:
+  high_cbil_low_l3:
+    description: "CBIL 점수는 높으나 L3 인지 수준이 낮은 경우"
+    feedback: |
+      CBIL 프레임워크는 잘 따르고 있지만, 고차원 사고(L3)가 부족합니다.
+      Generalize와 Transfer 단계에서 평가와 창조 수준의 활동을 추가하세요.
+
+  low_investigate_low_question:
+    description: "Investigate 단계와 Question 맥락이 모두 낮은 경우"
+    feedback: |
+      탐구(Investigate) 단계의 약점이 질문 부족과 연결됩니다.
+      학생 주도 탐구를 촉진하는 개방형 질문을 늘려보세요.
+
+  low_organize_low_facilitation:
+    description: "Organize 단계와 Facilitation 맥락이 모두 낮은 경우"
+    feedback: |
+      증거 조직화(Organize) 단계에서 교사의 촉진 역할이 부족합니다.
+      학생들이 정보를 정리하는 과정을 더 적극적으로 지원하세요.
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  created: "2025-11-10"
+  description: "CBIL 7단계와 Module 3 통합 코칭 템플릿"
+  usage_notes:
+    - "CBIL 점수와 3D 매트릭스를 함께 고려한 통합 코칭"
+    - "각 단계별 조건부 템플릿 제공"
+    - "CBIL-Matrix 연관성 패턴 인식"

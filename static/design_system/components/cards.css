@@ -1,0 +1,301 @@
+/**
+ * TVAS Design System - Card Components
+ *
+ * Base card system with variants for different contexts.
+ * All cards share common foundation with specific modifiers.
+ */
+
+/* ============ Base Card ============ */
+
+.card {
+  background: var(--card-bg-primary);
+  border-radius: var(--card-radius-default);
+  box-shadow: var(--card-shadow-default);
+  padding: var(--card-padding-default);
+  margin: var(--card-margin-default);
+  transition: box-shadow 0.2s ease;
+}
+
+/* ============ Size Variants ============ */
+
+.card--compact {
+  padding: var(--card-padding-compact);
+  margin: var(--card-margin-compact);
+}
+
+.card--spacious {
+  padding: var(--card-padding-spacious);
+}
+
+/* ============ Shadow Variants ============ */
+
+.card--shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.card--shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+.card--no-shadow {
+  box-shadow: none;
+}
+
+/* ============ Context-Specific Variants ============ */
+
+/* Sidebar cards - compact with consistent spacing */
+.card--sidebar {
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* Chart containers - centered with background */
+.card--chart {
+  position: relative;
+  background: var(--card-bg-chart);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 700px;
+  margin: var(--space-5) auto;
+}
+
+/* InBody metrics containers - medical styling */
+.card--inbody {
+  background: var(--card-bg-inbody);
+  padding: var(--card-padding-spacious);
+}
+
+/* Summary cards - prominent display */
+.card--summary {
+  background: var(--card-bg-primary);
+  padding: var(--space-6);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.card--summary__icon-wrapper {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-100, #DBEAFE);
+  border-radius: var(--radius-full);
+}
+
+.card--summary__icon {
+  font-size: 24px;
+}
+
+.card--summary__content {
+  flex: 1;
+}
+
+.card--summary__text {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--text-secondary);
+}
+
+/* Footer cards - minimal styling */
+.card--footer {
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+/* Insight cards - color-coded feedback */
+.card--insight {
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  border-left: 4px solid;
+}
+
+.card--insight.card--strength {
+  border-left-color: var(--status-excellent);
+  background: var(--status-excellent-bg);
+}
+
+.card--insight.card--improvement {
+  border-left-color: var(--status-adequate);
+  background: var(--status-adequate-bg);
+}
+
+.card--insight__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.card--insight__icon {
+  font-size: 20px;
+}
+
+.card--insight__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.card--insight__description {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--text-secondary);
+}
+
+.card--insight__example {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-white, #FFFFFF);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+  color: var(--text-tertiary);
+}
+
+/* Recommendation cards - actionable coaching */
+.card--recommendation {
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  border: var(--border-thin) solid var(--border-primary);
+}
+
+.card--recommendation__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.card--recommendation__number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--primary-600);
+  color: var(--color-white, #FFFFFF);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.card--recommendation__title {
+  flex: 1;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.card--recommendation__content {
+  padding-left: calc(32px + var(--space-3));
+}
+
+.card--recommendation__description {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.card--recommendation__why {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--gray-50, #F9FAFB);
+  border-radius: var(--radius-sm);
+}
+
+.card--recommendation__why-title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-xs);
+  color: var(--primary-700);
+  margin-bottom: var(--space-1);
+}
+
+/* ============ Interactive States ============ */
+
+.card--interactive {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card--interactive:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.card--interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-card-active);
+}
+
+/* Focus states for accessibility */
+.card--interactive:focus-visible {
+  outline: 3px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+.card[tabindex]:focus {
+  box-shadow: var(--shadow-input-focus);
+}
+
+/* ============ Print Optimization ============ */
+
+@media print {
+  .card {
+    box-shadow: none;
+    border: var(--border-thin) solid var(--border-print-color);
+    margin: var(--space-print-card) 0;
+    page-break-inside: avoid;
+  }
+
+  .card--compact,
+  .card--sidebar,
+  .card--insight,
+  .card--recommendation {
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  .card--summary,
+  .card--footer {
+    padding: var(--space-3);
+  }
+
+  .card--summary__icon-wrapper {
+    width: 32px;
+    height: 32px;
+  }
+
+  .card--summary__icon {
+    font-size: 16px;
+  }
+
+  .card--recommendation__number {
+    width: 24px;
+    height: 24px;
+    font-size: var(--font-size-xs);
+  }
+
+  .card--recommendation__content {
+    padding-left: calc(24px + var(--space-2));
+  }
+}
+
+/* ============ High Contrast Mode Support ============ */
+
+@media (prefers-contrast: high) {
+  .card {
+    border: var(--border-medium) solid var(--border-primary);
+  }
+
+  .card--insight,
+  .card--recommendation {
+    border-width: var(--border-medium);
+  }
+}

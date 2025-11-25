@@ -1,0 +1,199 @@
+{
+  "mappings": [
+    {
+      "name": "Submit Text Analysis",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/analyze/text"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "analysis_id": "{{randomValue length=20 type='ALPHANUMERIC'}}",
+          "status": "pending",
+          "message": "Analysis request received and queued for processing",
+          "framework": "{{jsonPath request.body '$.framework'}}"
+        },
+        "fixedDelayMilliseconds": 300
+      }
+    },
+    {
+      "name": "Get Analysis Status - Processing",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/analyze/.*"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "analysis_id": "{{request.pathSegments.[2]}}",
+          "status": "processing",
+          "message": "Solar2 Pro AI is analyzing the text using the selected framework...",
+          "framework": "cbil"
+        },
+        "fixedDelayMilliseconds": 1000
+      },
+      "priority": 3
+    },
+    {
+      "name": "Get CBIL Analysis Status - Completed",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/analyze/.*cbil.*"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "analysis_id": "{{request.pathSegments.[2]}}",
+          "status": "completed",
+          "message": "Analysis completed successfully",
+          "framework": "cbil",
+          "result": {
+            "analysis_id": "{{request.pathSegments.[2]}}",
+            "framework": "cbil",
+            "framework_name": "CBIL (7단계)",
+            "analysis": "### CBIL 7단계 분석 결과\n\n#### 1. Engage (흥미 유도 및 연결)\n교사가 수업 초반에 학생들의 관심을 끌고 기존 지식과 연결하려는 시도가 관찰됩니다. \"안녕하세요 여러분. 오늘은 수학 시간입니다\"라는 인사를 통해 수업을 시작하였으나, 학생들의 호기심을 자극하는 흥미로운 도입활동은 부족합니다.\n**점수: 2점**\n\n#### 2. Focus (탐구 방향 설정)\n\"함수에 대해서 공부해보겠습니다\"라고 명확히 학습 주제를 제시하였으며, 함수의 정의를 통해 탐구할 방향을 설정했습니다. 하지만 학생들이 스스로 탐구 문제를 설정하도록 유도하는 과정은 미흡합니다.\n**점수: 2점**\n\n#### 3. Investigate (자료 탐색 및 개념 형성)\n함수의 개념을 설명하고 구체적인 예시(f(x) = 2x + 1)를 제시하여 개념 형성을 도왔습니다. 학생들이 직접 탐색하고 발견할 수 있는 활동보다는 교사 중심의 설명이 주를 이뤘습니다.\n**점수: 2점**\n\n#### 4. Organize (개념 구조화)\n함수의 정의와 예시를 통해 개념을 체계적으로 정리하였으나, 학생들이 스스로 개념을 구조화하고 정리하는 과정은 제한적입니다.\n**점수: 2점**\n\n#### 5. Generalize (일반화 진술)\n함수의 일반적 개념을 제시하였지만, 학생들이 구체적 사례에서 일반적 원리를 도출하는 과정은 관찰되지 않습니다.\n**점수: 1점**\n\n#### 6. Transfer (새로운 맥락에 적용)\n연습문제를 통해 학습한 개념을 새로운 상황에 적용해보는 기회를 제공했습니다. f(x) = x² + 2x - 3에서 f(2)를 구하는 문제를 통해 전이를 시도했습니다.\n**점수: 3점**\n\n#### 7. Reflect (사고 성찰)\n\"이해가 되시나요?\"라는 확인 질문을 통해 학습 과정을 점검하려 했으나, 학생들의 깊이 있는 성찰과 메타인지 활동은 부족합니다.\n**점수: 1점**\n\n### 종합 평가\n**총점: 13점 / 21점 (62%)**\n\n이 수업은 전통적인 강의식 수업의 특징을 보이며, CBIL의 7단계를 부분적으로만 구현하고 있습니다. 학생 중심의 탐구 활동과 깊이 있는 사고를 유도하는 활동을 강화할 필요가 있습니다.",
+            "character_count": 1456,
+            "word_count": 487,
+            "created_at": "{{now format='yyyy-MM-dd'}}T{{now format='HH:mm:ss'}}Z"
+          }
+        },
+        "fixedDelayMilliseconds": 2000
+      },
+      "priority": 1
+    },
+    {
+      "name": "Get Dialogue Analysis Status - Completed",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/analyze/.*dialogue.*"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "analysis_id": "{{request.pathSegments.[2]}}",
+          "status": "completed",
+          "message": "Analysis completed successfully",
+          "framework": "dialogue",
+          "result": {
+            "analysis_id": "{{request.pathSegments.[2]}}",
+            "framework": "dialogue",
+            "framework_name": "학생주도 토론 분석",
+            "analysis": "### 학생주도 토론 수업 분석\n\n#### 질문 유형 분석\n\n**1. 사실적 질문 (Factual Questions)**\n- \"함수란 입력값에 대해 정확히 하나의 출력값을 가지는 관계를 말합니다\" - 개념 설명 후 확인\n- 사실적 질문의 비중이 높아 학생들의 고차원적 사고를 유도하지 못함\n\n**2. 해석적 질문 (Interpretive Questions)**\n- 제한적으로만 관찰됨\n- 학생들이 개념을 해석하고 의미를 구성하는 기회 부족\n\n**3. 평가적 질문 (Evaluative Questions)**\n- 거의 관찰되지 않음\n- 학생들의 비판적 사고나 가치 판단 기회 제공되지 않음\n\n#### 후속 질문 분석\n\n**명료화 질문 (Clarification)**\n- \"이해가 되시나요?\" - 단순한 확인 질문\n- 학생의 답변을 더 명확히 하도록 유도하는 질문 부족\n\n**초점화 질문 (Focusing)**\n- 특정 주제(함수)에 집중하도록 하는 질문은 있으나 제한적\n\n**정교화 질문 (Elaboration)**\n- 학생의 답변을 확장하거나 깊이 있게 탐구하는 질문 거의 없음\n\n#### 수업 대화 유형\n\n**교사 주도형 대화 (Teacher-Led Discussion)**\n- 대부분의 대화가 교사 중심으로 진행됨\n- IRE(Initiation-Response-Evaluation) 패턴이 주를 이룸\n\n**학생 참여도**\n- 제한적 참여: \"김철수 학생 질문있으면 손을 들어주세요\"\n- 수동적 참여 위주, 능동적 질문이나 토론 부족\n\n### 개선 권장사항\n\n1. **개방형 질문 증가**: \"왜 그렇게 생각하나요?\" \"다른 방법은 없을까요?\"\n2. **학생 간 상호작용 촉진**: 소그룹 토론, 동료 학습 활동\n3. **사고 확장 질문**: \"실생활에서 이런 예를 찾을 수 있을까요?\"\n4. **메타인지 질문**: \"어떤 방법으로 문제를 해결했나요?\"\n\n**평가**: 교사 중심의 일방향적 수업으로, 학생주도 토론의 요소는 매우 제한적입니다. 학생들의 능동적 참여와 상호작용을 늘려야 합니다.",
+            "character_count": 1234,
+            "word_count": 412,
+            "created_at": "{{now format='yyyy-MM-dd'}}T{{now format='HH:mm:ss'}}Z"
+          }
+        },
+        "fixedDelayMilliseconds": 2500
+      },
+      "priority": 1
+    },
+    {
+      "name": "Get Coaching Analysis Status - Completed",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/analyze/.*coaching.*"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "analysis_id": "{{request.pathSegments.[2]}}",
+          "status": "completed",
+          "message": "Analysis completed successfully",
+          "framework": "coaching",
+          "result": {
+            "analysis_id": "{{request.pathSegments.[2]}}",
+            "framework": "coaching",
+            "framework_name": "수업 코칭 분석",
+            "analysis": "### 수업 코칭 분석 보고서\n\n#### 1. 학습 목표의 명확성 (4/5)\n학습 목표가 명확히 제시되었습니다. \"함수에 대해서 공부해보겠습니다\"라고 직접적으로 학습 내용을 안내했으며, 함수의 정의와 계산 방법을 학습한다는 목표가 암시적으로 전달되었습니다.\n\n#### 2. 도입의 효과성 (3/5)\n친근한 인사로 시작하여 긍정적인 분위기를 조성했으나, 학생들의 호기심을 자극하거나 동기를 유발하는 특별한 도입 활동은 부족했습니다.\n\n#### 3. 학습 내용의 적절성 (5/5)\n함수의 개념을 단계적으로 설명하고, 구체적인 예시를 통해 이해를 도왔습니다. 내용의 난이도와 순서가 적절합니다.\n\n#### 4. 설명의 명확성 (4/5)\n개념 설명이 명확하고 이해하기 쉽게 제시되었습니다. \"함수란 입력값에 대해 정확히 하나의 출력값을 가지는 관계\"라는 정의가 정확하고 간명합니다.\n\n#### 5. 예시 활용 (5/5)\n적절한 수학적 예시(f(x) = 2x + 1, f(x) = x² + 2x - 3)를 활용하여 개념을 구체화했습니다.\n\n#### 6. 학생 참여 유도 (2/5)\n\"이해가 되시나요?\" \"질문있으면 손을 들어주세요\"와 같은 참여 유도가 있었으나, 실질적인 상호작용은 제한적이었습니다.\n\n#### 7. 질문 기법 (2/5)\n확인형 질문 위주로, 학생들의 사고를 확장하거나 심화하는 질문이 부족했습니다.\n\n#### 8. 피드백의 효과성 (3/5)\n\"잘 하셨습니다\"와 같은 긍정적 피드백을 제공했으나, 구체적이고 발전적인 피드백은 부족했습니다.\n\n#### 9. 개별화 지도 (2/5)\n개별 학생(김철수)에 대한 관심을 보였으나, 체계적인 개별화 지도는 관찰되지 않았습니다.\n\n#### 10. 학습 활동의 다양성 (2/5)\n주로 강의와 연습문제 풀이로 구성되어 활동의 다양성이 부족했습니다.\n\n### 총 평점: 32/50 (64%)\n\n### 개선 제안\n1. **참여형 활동 증가**: 소그룹 활동, 토론, 게임 등 다양한 학습 활동 도입\n2. **질문 기법 개선**: 개방형 질문, 사고 확장 질문 활용\n3. **개별화 지도 강화**: 학습자별 수준 파악 및 맞춤형 지도\n4. **동기 유발 강화**: 실생활 연계, 흥미로운 도입 활동\n\n전반적으로 체계적이고 명확한 수업이지만, 학생 중심의 참여형 수업으로 발전시킬 여지가 많습니다.",
+            "character_count": 1567,
+            "word_count": 523,
+            "created_at": "{{now format='yyyy-MM-dd'}}T{{now format='HH:mm:ss'}}Z"
+          }
+        },
+        "fixedDelayMilliseconds": 3000
+      },
+      "priority": 1
+    },
+    {
+      "name": "Get Analysis Status - Failed",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/analyze/failed-.*"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "analysis_id": "{{request.pathSegments.[2]}}",
+          "status": "failed",
+          "message": "Analysis failed due to text processing error. Please check the input text and try again."
+        },
+        "fixedDelayMilliseconds": 1500
+      },
+      "priority": 1
+    },
+    {
+      "name": "Analysis API Error",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/analyze/text",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.text",
+            "contains": "error"
+          }
+        ]
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "detail": "Internal server error occurred during analysis"
+        }
+      }
+    },
+    {
+      "name": "Invalid Text Analysis",
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/analyze/text",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.text",
+            "equalTo": ""
+          }
+        ]
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "detail": "Text content cannot be empty"
+        }
+      }
+    }
+  ]
+}

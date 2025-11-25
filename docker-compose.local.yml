@@ -1,0 +1,223 @@
+services:
+  # Local PostgreSQL database
+  postgres_local:
+    image: postgres:15-alpine
+    container_name: aiboa_postgres_local
+    environment:
+      POSTGRES_DB: aiboa_local
+      POSTGRES_USER: aiboa_user
+      POSTGRES_PASSWORD: aiboa_local_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5435:5432" # Use different port to avoid conflicts
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U aiboa_user -d aiboa_local" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - aiboa_local
+
+  # Local Redis for job queuing
+  redis_local:
+    image: redis:7-alpine
+    container_name: aiboa_redis_local
+    ports:
+      - "6381:6379" # Use different port to avoid conflicts
+    volumes:
+      - redis_local_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - aiboa_local
+
+  # Transcription service (local)
+  transcription_local:
+    build:
+      context: ./services/transcription
+      dockerfile: Dockerfile
+    container_name: aiboa_transcription_local
+    environment:
+      # Database
+      DATABASE_URL: postgresql://aiboa_user:aiboa_local_password@postgres_local:5432/aiboa_local
+
+      # Redis
+      REDIS_HOST: redis_local
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+
+      # Display for browser automation
+      DISPLAY: :99
+
+      # API Keys (set these in .env.local)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      UPSTAGE_API_KEY: ${UPSTAGE_API_KEY:-}
+
+      # Local development settings
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: INFO
+      DEPLOYMENT_ENV: local
+
+    ports:
+      - "8002:8000" # Use different port for local
+    volumes:
+      - ./data_local:/app/data # Local data directory
+      - ./logs_local:/app/logs # Local logs directory
+    depends_on:
+      postgres_local:
+        condition: service_healthy
+      redis_local:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - aiboa_local
+
+  # Analysis service (local)
+  analysis_local:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: aiboa_analysis_local
+    environment:
+      # Database
+      DATABASE_URL: postgresql://aiboa_user:aiboa_local_password@postgres_local:5432/aiboa_local
+
+      # Redis
+      REDIS_HOST: redis_local
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+
+      # API Keys (set these in .env.local)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      UPSTAGE_API_KEY: ${UPSTAGE_API_KEY:-up_kcU1IMWm9wcC1rqplsIFMsEeqlUXN}
+
+      # Local development settings
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: INFO
+
+    ports:
+      - "8010:8000" # Use different port for local
+    volumes:
+      - ./data_local:/app/data # Local data directory
+      - ./logs_local:/app/logs # Local logs directory
+    depends_on:
+      postgres_local:
+        condition: service_healthy
+      redis_local:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - aiboa_local
+
+  # Gateway service (local)
+  gateway_local:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: aiboa_gateway_local
+    environment:
+      # Service URLs
+      TRANSCRIPTION_SERVICE_URL: http://transcription_local:8000
+      ANALYSIS_SERVICE_URL: http://analysis_local:8000
+      EVALUATION_SERVICE_URL: http://analysis_local:8000 # Assuming evaluation is part of analysis for now
+      REPORTING_SERVICE_URL: http://analysis_local:8000 # Assuming reporting is part of analysis for now
+
+      # Redis
+      REDIS_HOST: redis_local
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+
+      # API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      UPSTAGE_API_KEY: ${UPSTAGE_API_KEY:-up_kcU1IMWm9wcC1rqplsIFMsEeqlUXN}
+
+      # Local development settings
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: INFO
+
+    ports:
+      - "8020:8000" # Gateway runs on 8000 internally, mapped to 8020 on host
+    depends_on:
+      transcription_local:
+        condition: service_healthy
+      analysis_local:
+        condition: service_healthy
+      redis_local:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - aiboa_local
+
+  # Nginx for local testing
+  nginx_local:
+    image: nginx:alpine
+    container_name: aiboa_nginx_local
+    ports:
+      - "8080:80" # Alternative port 8080 for local development
+    volumes:
+      - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/out:/usr/share/nginx/html:ro # Serve static frontend
+      - ./logs_local/nginx:/var/log/nginx
+    depends_on:
+      - transcription_local
+      - analysis_local
+      - gateway_local
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aiboa_local
+
+networks:
+  aiboa_local:
+    driver: bridge
+    name: aiboa_local_network
+
+volumes:
+  postgres_local_data:
+    name: aiboa_postgres_local_data
+  redis_local_data:
+    name: aiboa_redis_local_data
+
+# Development helper commands (use with docker-compose -f docker-compose.local.yml)
+#
+# Start all services:
+#   docker-compose -f docker-compose.local.yml up -d
+#
+# View logs:
+#   docker-compose -f docker-compose.local.yml logs -f
+#
+# Stop all services:
+#   docker-compose -f docker-compose.local.yml down
+#
+# Reset all data (caution: deletes all local data):
+#   docker-compose -f docker-compose.local.yml down -v
+#
+# Access database:
+#   docker-compose -f docker-compose.local.yml exec postgres_local psql -U aiboa_user -d aiboa_local
+#
+# Test API endpoints:
+#   curl http://localhost:8080/health
+#   curl http://localhost:8080/api/frameworks
+#   curl http://localhost:8080/api/stats
+#
+# Frontend URL: http://localhost:8080

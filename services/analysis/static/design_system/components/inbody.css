@@ -1,0 +1,239 @@
+/**
+ * TVAS Design System - InBody Medical Style Components
+ * 의료용 진단 리포트 스타일 (InBody 체성분 분석 참고)
+ */
+
+/* ============================================
+   INBODY METRICS CONTAINER
+   ============================================ */
+.inbody-metrics-container {
+  background: var(--inbody-white);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin: var(--space-4) 0;
+  border: 1px solid var(--gray-200);
+}
+
+.inbody-metric-row {
+  display: grid;
+  grid-template-columns: 2fr 3fr 1fr 1.5fr 1fr 0.8fr;
+  gap: var(--space-2-5);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 0.5px solid var(--inbody-gray-light);
+  font-size: var(--font-size-xs);
+}
+
+.inbody-metric-row:last-child {
+  border-bottom: none;
+}
+
+.inbody-metric-label {
+  font-weight: var(--font-weight-medium);
+  color: var(--inbody-black);
+  font-size: var(--font-size-xs);
+}
+
+.inbody-metric-bar-container {
+  position: relative;
+  height: 24px;
+}
+
+.inbody-bar-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--inbody-bg);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.inbody-bar-centerline {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--inbody-gray-medium);
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.inbody-bar {
+  position: absolute;
+  height: 100%;
+  transition: width 0.3s ease;
+  z-index: 2;
+}
+
+.inbody-bar.left {
+  right: 50%;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.inbody-bar.right {
+  left: 50%;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.inbody-bar.center {
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: var(--radius-sm);
+  width: 10px !important;
+}
+
+.inbody-metric-value {
+  font-weight: var(--font-weight-semibold);
+  color: var(--inbody-black);
+  text-align: right;
+  font-size: var(--font-size-sm);
+}
+
+.inbody-metric-optimal {
+  color: var(--inbody-gray-dark);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.inbody-metric-status {
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  font-size: var(--font-size-xs);
+}
+
+.inbody-metric-status.status-deficit {
+  color: var(--inbody-red);
+}
+
+.inbody-metric-status.status-optimal {
+  color: var(--inbody-black);
+}
+
+.inbody-metric-status.status-excess {
+  color: var(--inbody-gray-dark);
+}
+
+.inbody-metric-score {
+  font-weight: var(--font-weight-bold);
+  color: var(--inbody-black);
+  text-align: right;
+  font-size: var(--font-size-sm);
+}
+
+/* ============================================
+   INBODY METRICS TABLE
+   ============================================ */
+.inbody-table-container {
+  background: var(--inbody-white);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin: var(--space-4) 0;
+  overflow-x: auto;
+  border: 1px solid var(--gray-200);
+}
+
+.inbody-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+.inbody-metrics-table thead {
+  background: var(--inbody-bg);
+}
+
+.inbody-metrics-table th {
+  padding: var(--space-2) var(--space-2);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  color: var(--inbody-black);
+  border-bottom: 0.5px solid var(--inbody-gray-medium);
+  font-size: var(--font-size-xs);
+}
+
+.inbody-metrics-table td {
+  padding: var(--space-1-5) var(--space-2);
+  border-bottom: 0.5px solid var(--inbody-gray-light);
+  font-size: var(--font-size-xs);
+}
+
+.inbody-metrics-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.inbody-metrics-table tbody tr:hover {
+  background: var(--inbody-bg);
+}
+
+.inbody-metrics-table .metric-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--inbody-black);
+}
+
+.inbody-metrics-table .metric-value {
+  font-weight: var(--font-weight-semibold);
+  text-align: right;
+  color: var(--inbody-black);
+}
+
+.inbody-metrics-table .metric-optimal {
+  text-align: center;
+  color: var(--inbody-gray-dark);
+  font-size: var(--font-size-xs);
+}
+
+.inbody-metrics-table .metric-status {
+  text-align: center;
+  font-weight: var(--font-weight-medium);
+}
+
+.inbody-metrics-table .metric-status.status-deficit {
+  color: var(--inbody-red);
+}
+
+.inbody-metrics-table .metric-status.status-optimal {
+  color: var(--inbody-black);
+}
+
+.inbody-metrics-table .metric-status.status-excess {
+  color: var(--inbody-gray-dark);
+}
+
+.inbody-metrics-table .metric-score {
+  text-align: right;
+  font-weight: var(--font-weight-bold);
+  color: var(--inbody-black);
+  font-size: var(--font-size-sm);
+}
+
+/* ============================================
+   PRINT OPTIMIZATION
+   ============================================ */
+@media print {
+  .inbody-metrics-container,
+  .inbody-table-container {
+    padding: var(--space-2);
+    margin: var(--space-2) 0;
+  }
+
+  .inbody-metric-row {
+    padding: var(--space-0-5) 0;
+    font-size: 9px;
+  }
+
+  .inbody-metric-bar-container {
+    height: 16px;
+  }
+
+  .inbody-metrics-table {
+    font-size: 9px;
+  }
+
+  .inbody-metrics-table th,
+  .inbody-metrics-table td {
+    padding: 2px 4px;
+  }
+}
